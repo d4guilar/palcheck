@@ -1,0 +1,42 @@
+# Local development dependencies only: PostgreSQL and Keycloak (development identity provider).
+# The backend and frontend run on the host (see README). No broker, dashboards or simulators are needed.
+#
+# UNVERIFIED IN CI/AUTHORING ENVIRONMENT: this file was written on a machine without a container runtime and has
+# not been executed yet. See docs/PHASE_1_IMPLEMENTATION_PLAN.md section 16 (R2).
+name: palcheck
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${PALCHECK_DB_NAME:-palcheck}
+      POSTGRES_USER: ${PALCHECK_DB_USER:-palcheck}
+      POSTGRES_PASSWORD: ${PALCHECK_DB_PASSWORD:?copy .env.example to .env first}
+    ports:
+      - "${PALCHECK_DB_PORT:-5432}:5432"
+    volumes:
+      - palcheck-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PALCHECK_DB_USER:-palcheck} -d ${PALCHECK_DB_NAME:-palcheck}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?copy .env.example to .env first}
+      # A fixed public URL keeps the token issuer identical for the browser and the backend running on the host.
+      KC_HOSTNAME: http://localhost:${KEYCLOAK_PORT:-8180}
+      # Substituted into infra/keycloak/palcheck-realm.json on import.
+      PALCHECK_OIDC_CLIENT_SECRET: ${PALCHECK_OIDC_CLIENT_SECRET:?copy .env.example to .env first}
+      PALCHECK_DEMO_USER_PASSWORD: ${PALCHECK_DEMO_USER_PASSWORD:?copy .env.example to .env first}
+    ports:
+      - "${KEYCLOAK_PORT:-8180}:8080"
+    volumes:
+      - ./infra/keycloak/palcheck-realm.json:/opt/keycloak/data/import/palcheck-realm.json:ro
+
+volumes:
+  palcheck-pgdata:

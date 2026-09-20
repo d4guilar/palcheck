@@ -1,0 +1,31 @@
+# Integration-test profile. No identity provider is contacted at startup: endpoints are explicit, so OIDC discovery
+# is skipped. The database is a real PostgreSQL started in-process by TestPostgres.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          oidc:
+            client-id: palcheck-test
+            client-secret: test-only-not-a-secret
+        provider:
+          oidc:
+            authorization-uri: http://idp.test.invalid/authorize
+            token-uri: http://idp.test.invalid/token
+            jwk-set-uri: http://idp.test.invalid/jwks
+            user-name-attribute: sub
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+palcheck:
+  idempotency:
+    purge-enabled: false
+
+logging:
+  structured:
+    format:
+      console: ''

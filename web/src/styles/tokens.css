@@ -1,0 +1,157 @@
+/*
+ * PalCheck design tokens. Semantic custom properties are the only values components use.
+ * Meaning of color: blue = interactive, green = success, amber = warning, red = error, neutral = ordinary UI.
+ * Every text/background pair below is checked against WCAG AA contrast by src/styles/tokens.test.ts.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Typography: the platform system font; tracking tightens as size grows, leading tightens as size grows. */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --text-caption: 0.8125rem;
+  --text-body: 0.9375rem;
+  --text-headline: 1.125rem;
+  --text-title: 1.5rem;
+  --text-display: 2rem;
+  --leading-caption: 1.4;
+  --leading-body: 1.5;
+  --leading-headline: 1.3;
+  --leading-title: 1.2;
+  --leading-display: 1.1;
+  --tracking-caption: 0.01em;
+  --tracking-body: 0;
+  --tracking-headline: -0.01em;
+  --tracking-title: -0.015em;
+  --tracking-display: -0.02em;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Spacing (4px base, expressed in rem so it scales with the user's text size). */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --gutter: clamp(1rem, 4vw, 2rem);
+  --content-width: 72rem;
+  --form-width: 48rem;
+  --rail-width: 14rem;
+  --section-title: 1.25rem;
+  --avatar-size: 2.5rem;
+  --profile-size: 4rem;
+  --search-width: 28rem;
+  --elevation-soft: 0 2px 8px rgb(0 0 0 / 0.04);
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --hit-target: 2.75rem;
+
+  --duration-fast: 120ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Color: light */
+  --color-bg: #ffffff;
+  --color-bg-subtle: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-border: #dcdfe4;
+  --color-border-strong: #7a828d;
+  --color-text: #16191d;
+  --color-text-secondary: #464c55;
+  --color-text-muted: #5b626d;
+  --color-accent: #0b5cc6;
+  --color-accent-hover: #084a9f;
+  --color-accent-contrast: #ffffff;
+  --color-accent-subtle: #e8f0fc;
+  --color-focus: #0b5cc6;
+  --color-success-text: #17692f;
+  --color-success-bg: #e7f5eb;
+  --color-warning-text: #7a4f00;
+  --color-warning-bg: #fff3d1;
+  --color-error-text: #a8231a;
+  --color-error-bg: #fdeceb;
+  --color-neutral-text: #464c55;
+  --color-neutral-bg: #eef0f3;
+  --color-chrome-bg: rgb(255 255 255 / 0.8);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #101215;
+    --color-bg-subtle: #16191d;
+    --color-surface: #181b20;
+    --color-border: #2c3138;
+    --color-border-strong: #6b7380;
+    --color-text: #eef0f3;
+    --color-text-secondary: #b6bcc6;
+    --color-text-muted: #98a0ab;
+    --color-accent: #6da7ff;
+    --color-accent-hover: #93bcff;
+    --color-accent-contrast: #0a1b33;
+    --color-accent-subtle: #14233a;
+    --color-focus: #6da7ff;
+    --color-success-text: #79d394;
+    --color-success-bg: #12261a;
+    --color-warning-text: #f0c060;
+    --color-warning-bg: #2b2210;
+    --color-error-text: #ff9188;
+    --color-error-bg: #2e1614;
+    --color-neutral-text: #b6bcc6;
+    --color-neutral-bg: #22262c;
+    --color-chrome-bg: rgb(16 18 21 / 0.8);
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #101215;
+  --color-bg-subtle: #16191d;
+  --color-surface: #181b20;
+  --color-border: #2c3138;
+  --color-border-strong: #6b7380;
+  --color-text: #eef0f3;
+  --color-text-secondary: #b6bcc6;
+  --color-text-muted: #98a0ab;
+  --color-accent: #6da7ff;
+  --color-accent-hover: #93bcff;
+  --color-accent-contrast: #0a1b33;
+  --color-accent-subtle: #14233a;
+  --color-focus: #6da7ff;
+  --color-success-text: #79d394;
+  --color-success-bg: #12261a;
+  --color-warning-text: #f0c060;
+  --color-warning-bg: #2b2210;
+  --color-error-text: #ff9188;
+  --color-error-bg: #2e1614;
+  --color-neutral-text: #b6bcc6;
+  --color-neutral-bg: #22262c;
+  --color-chrome-bg: rgb(16 18 21 / 0.8);
+}
+
+/* Increased contrast: near-solid surfaces and defined borders. */
+@media (prefers-contrast: more) {
+  :root {
+    --color-border: var(--color-border-strong);
+    --color-chrome-bg: var(--color-surface);
+  }
+}
+
+/* Windows high-contrast and other forced-color modes use the user's system colors. */
+@media (forced-colors: active) {
+  :root {
+    --color-focus: Highlight;
+    --color-accent: LinkText;
+    --color-border: CanvasText;
+    --color-border-strong: CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0.01ms;
+  }
+}

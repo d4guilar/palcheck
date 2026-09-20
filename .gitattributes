@@ -1,0 +1,6 @@
+# Keep text portable across Windows development and Linux CI.
+* text=auto
+backend/mvnw text eol=lf
+*.sh text eol=lf
+*.cmd text eol=crlf
+*.png binary

@@ -1,0 +1,24 @@
+# Local development profile: `./mvnw spring-boot:run -Dspring-boot.run.profiles=dev`
+# Reads ../.env (copied from ../.env.example) for the database and OIDC settings, seeds synthetic demo data,
+# serves the session cookie over plain http, and prints readable logs.
+spring:
+  config:
+    import: optional:file:../.env[.properties]
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+palcheck:
+  demo:
+    seed: true
+    issuer: ${PALCHECK_OIDC_ISSUER_URI:http://localhost:8180/realms/palcheck}
+
+logging:
+  level:
+    com.palcheck: DEBUG
+  structured:
+    format:
+      console: ''

@@ -1,0 +1,78 @@
+{
+  "realm": "palcheck",
+  "displayName": "PalCheck (local development)",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "clients": [
+    {
+      "clientId": "palcheck-web",
+      "name": "PalCheck web (backend-managed session)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "${PALCHECK_OIDC_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*", "http://localhost:8080/*"],
+      "webOrigins": ["http://localhost:5173", "http://localhost:8080"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*##http://localhost:8080/*"
+      },
+      "defaultClientScopes": ["web-origins", "profile", "email"],
+      "optionalClientScopes": []
+    }
+  ],
+  "users": [
+    {
+      "id": "dfbe52ab-aad0-4488-a57d-7edba445f47a",
+      "username": "hr.admin@acme.example",
+      "email": "hr.admin@acme.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Rebeca",
+      "lastName": "Umaña Salas",
+      "credentials": [{ "type": "password", "value": "${PALCHECK_DEMO_USER_PASSWORD}", "temporary": false }]
+    },
+    {
+      "id": "907a5f68-255a-47c8-930f-7c3f97f5ffe5",
+      "username": "hr.viewer@acme.example",
+      "email": "hr.viewer@acme.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Tomás",
+      "lastName": "Zúñiga Rojas",
+      "credentials": [{ "type": "password", "value": "${PALCHECK_DEMO_USER_PASSWORD}", "temporary": false }]
+    },
+    {
+      "id": "c68bce61-0cf4-4792-bdd3-4789b998120f",
+      "username": "hr.admin@globex.example",
+      "email": "hr.admin@globex.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Valeria",
+      "lastName": "Quesada Brenes",
+      "credentials": [{ "type": "password", "value": "${PALCHECK_DEMO_USER_PASSWORD}", "temporary": false }]
+    },
+    {
+      "id": "549bc81c-9da4-4461-9978-5da358d8bb84",
+      "username": "unmapped@acme.example",
+      "email": "unmapped@acme.example",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Nicolás",
+      "lastName": "Araya Mora",
+      "credentials": [{ "type": "password", "value": "${PALCHECK_DEMO_USER_PASSWORD}", "temporary": false }]
+    }
+  ]
+}
