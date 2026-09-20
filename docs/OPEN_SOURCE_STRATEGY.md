@@ -2,7 +2,7 @@
 
 Status: **decision pending with Daniel Aguilar**. No license has been selected or applied.
 
-Daniel Aguilar created PalCheck and remains its current owner. The project is being prepared as a source-visible portfolio project, with a potential open-source release later. Publication has not been performed by this review.
+Daniel Aguilar created PalCheck and remains its current owner. The project is a public source-visible portfolio project at [d4guilar/palcheck](https://github.com/d4guilar/palcheck), with a potential open-source release later. Daniel authorized public publication on 2026-09-20; the initial Phase 1 commit was pushed that day. This did not select or grant an open-source license.
 
 Copyright ownership, authorship attribution, repository visibility, and licensing are separate questions. An open-source license grants specified permissions; it does not itself replace the author's identity. Different licenses impose different conditions. Public visibility alone does not supply an open-source license; hosting-platform terms also govern use of that platform. [GitHub's licensing guidance](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository) explains the distinction.
 

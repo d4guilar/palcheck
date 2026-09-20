@@ -90,6 +90,6 @@ Future milestones may add provider adapters, workforce-event orchestration, and 
 
 ## Ownership and independence
 
-Copyright © 2026 Daniel Aguilar. PalCheck was created by Daniel Aguilar; AI assistance and engineering decisions are documented openly. The project is being prepared for potential public source visibility. **No open-source license has been selected or granted for PalCheck.** See [COPYRIGHT.md](COPYRIGHT.md) and the [open-source decision](docs/OPEN_SOURCE_STRATEGY.md); third-party notices remain their own.
+Copyright © 2026 Daniel Aguilar. PalCheck was created by Daniel Aguilar; AI assistance and engineering decisions are documented openly. The source is publicly available at [d4guilar/palcheck](https://github.com/d4guilar/palcheck). **No open-source license has been selected or granted for PalCheck.** See [COPYRIGHT.md](COPYRIGHT.md) and the [open-source decision](docs/OPEN_SOURCE_STRATEGY.md); third-party notices remain their own.
 
 PalCheck is not affiliated with, endorsed by, or certified by Apple, Microsoft, Workday, Equifax, SAP, Oracle, ServiceNow, or any other employer or vendor. The UI uses native system fonts and independent styling, without proprietary Apple assets. Legal concepts remain `UNVERIFIED` until researched under the project policy; no legal rules are implemented. Project documentation is not legal advice.

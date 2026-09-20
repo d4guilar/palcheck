@@ -362,3 +362,37 @@ Remote authentication and GitHub workflow execution are not yet verified. Existi
 Push the prepared commit after the destination is supplied; verify the remote branch and report the commit/link.
 
 Publication preparation also records portable line endings in .gitattributes and marks backend/mvnw executable in Git for Linux CI. A trailing blank line flagged by the staged whitespace check was removed; no test behavior changed.
+
+## 2026-09-20 16:50 — CODEX
+
+### Task
+
+Create and push PalCheck to a public GitHub repository under d4guilar, explicitly selected by Daniel after the public portfolio recommendation.
+
+### Work completed
+
+Verified the saved credential belongs to d4guilar. Created the public repository https://github.com/d4guilar/palcheck, configured origin, and pushed main with upstream tracking. GitHub's remote main matched initial commit f25a897d3f534aa8d54e582271795e1e2f2895fd. Updated README and the open-source strategy to reflect actual public visibility.
+
+### Decisions made
+
+Repository visibility is Public and owner is d4guilar, per Daniel's authorization. No license was selected; copyright and Phase 1 scope remain unchanged. Existing history was preserved; no force push was used.
+
+### Tests
+
+The initial publication candidate had 273 staged files, passed Gitleaks with no findings, and excluded environment secrets, generated output, dependencies, and local browser artifacts. The staged whitespace check passed and the Maven wrapper is executable in Git. Remote ref verification confirmed the first push. No application code changed; application suites were not rerun for this publication task. GitHub Actions results are separate from prior local test evidence.
+
+### Assumptions
+
+The chosen account and public visibility are intended for Daniel's recruiter-facing portfolio.
+
+### Open questions
+
+License/contribution policy and Phase 1 acceptance decisions remain open. Hosting a live application is a separate decision.
+
+### Risks
+
+Public source visibility does not establish production readiness. Previously recorded security/accessibility limitations remain; hosted workflow outcomes need inspection.
+
+### Suggested next step
+
+Review GitHub Actions results and use the repository link on the portfolio. Continue only the separately authorized Phase 1 acceptance/publication-validation scope; do not infer authorization for Phase 2 or a public application deployment.
