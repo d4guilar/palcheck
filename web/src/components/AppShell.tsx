@@ -50,6 +50,7 @@ export function AppShell() {
         <div className="rail-workspace"><span className="eyebrow">{t('nav.workspace')}</span><strong>{session.tenant.name}</strong></div>
         <nav className="app-nav" aria-label={t('nav.main')}>
           <NavLink to="/people">{t('nav.people')}</NavLink>
+          {session.can('VIEW_SYSTEMS') ? <NavLink to="/systems">{t('systems.title')}</NavLink> : null}
         </nav>
         <div className="rail-account">
           <span className="eyebrow">{t('nav.account')}</span>

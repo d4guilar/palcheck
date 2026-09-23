@@ -5,6 +5,7 @@ import com.palcheck.audit.api.AuditActor;
 import com.palcheck.audit.api.AuditChange;
 import com.palcheck.audit.api.AuditRecord;
 import com.palcheck.audit.api.AuditRecorder;
+import com.palcheck.shared.TenantId;
 import com.palcheck.workforce.domain.FieldChange;
 import java.util.List;
 import java.util.UUID;
@@ -39,10 +40,31 @@ class WorkforceAuditor {
                 changes, reason);
     }
 
+    /** As {@link #created}, but attributed to a synchronization, never a human (Phase 2, ADR-0025 decision 8). */
+    void createdBySystem(String systemName, String command, UUID changeSetId, String entityType, UUID entityId,
+            long version, TenantId tenantId, UUID personId, List<FieldChange> changes, String reason) {
+        record(tenantId, AuditActor.system(systemName), command, changeSetId, AuditRecord.Operation.CREATE,
+                entityType, entityId, version, personId, changes, reason);
+    }
+
+    /** As {@link #updated}, but attributed to a synchronization, never a human (Phase 2, ADR-0025 decision 8). */
+    void updatedBySystem(String systemName, String command, UUID changeSetId, String entityType, UUID entityId,
+            long version, TenantId tenantId, UUID personId, List<FieldChange> changes, String reason) {
+        record(tenantId, AuditActor.system(systemName), command, changeSetId, AuditRecord.Operation.UPDATE,
+                entityType, entityId, version, personId, changes, reason);
+    }
+
     private void record(Actor actor, String command, UUID changeSetId, AuditRecord.Operation operation,
             String entityType, UUID entityId, long version, UUID personId, List<FieldChange> changes, String reason) {
-        recorder.record(new AuditRecord(actor.tenantId(), AuditActor.user(actor.principalId(), actor.displayName()),
-                command, changeSetId, operation, entityType, entityId, version, PERSON, personId,
+        record(actor.tenantId(), AuditActor.user(actor.principalId(), actor.displayName()), command, changeSetId,
+                operation, entityType, entityId, version, personId, changes, reason);
+    }
+
+    private void record(TenantId tenantId, AuditActor actor, String command, UUID changeSetId,
+            AuditRecord.Operation operation, String entityType, UUID entityId, long version, UUID personId,
+            List<FieldChange> changes, String reason) {
+        recorder.record(new AuditRecord(tenantId, actor, command, changeSetId, operation, entityType, entityId,
+                version, PERSON, personId,
                 changes.stream().map(c -> new AuditChange(c.field(), c.before(), c.after())).toList(), reason));
     }
 }

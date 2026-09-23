@@ -1,15 +1,18 @@
 # Roadmap
 
 > **Reconciliation notice (2026-09-19):** Daniel approved refinement 6 (smaller implementation milestones) and **opened Phase 1: Authenticated Workforce Foundation**. The order of milestones is now **foundation, then provisioning, then overlay** ([ADR-0020](adr/0020-foundation-first-delivery-plan.md), accepted in part). Claude's original hire-to-provision proposal is preserved below as the *provisioning milestone*. Numbering of milestones after Phase 1 is Daniel's to assign; nothing is silently renumbered. Detailed Phase 1 plan: [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md).
+>
+> **Reconciliation notice (2026-09-22):** Daniel **opened Phase 2: External HRIS Translation Foundation.** This is a narrower, inbound-only slice of what [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) called "Phase 2: reference HRIS" (section 8) — a mock Workday-shaped provider, an adapter and mapper, and a write path into `workforce` with ownership and lineage, but **no outbox, broker, downstream delivery or simulator** (those remain the deferred *outbound* half of that document, unchanged). It slots in immediately after the workforce foundation and before the *provisioning milestone* below, which keeps its original numbering and scope (numbering after Phase 2 is still Daniel's to assign). Detailed plan: [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md).
 
-Status: **Phase 1 implemented and awaiting Daniel's review (opened 2026-09-19).** Evidence against the definition of done is in [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md) section 1; known limitations in section 17. The independent [Codex Phase 1 review](PHASE_1_CODEX_REVIEW.md) is complete; [the handoff](PHASE_1_REVIEW_HANDOFF.md) recommends acceptance/publication validation before further features. Only Daniel opens a phase. Everything after Phase 1 is a plan, not a commitment.
+Status: **Phase 2 implemented and reviewed; awaiting Daniel’s acceptance (2026-09-22).** Phase 1 is implemented and accepted; evidence against its definition of done is in [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md) section 1, known limitations in section 17. The independent [Codex Phase 1 review](PHASE_1_CODEX_REVIEW.md) is complete; [the handoff](PHASE_1_REVIEW_HANDOFF.md)'s acceptance/publication-validation recommendation remains a separate, not-yet-started task. Only Daniel opens a phase. Everything after Phase 2 is a plan, not a commitment.
 
 ## Phase gates
 
 | Gate | Who decides | Evidence expected |
 |---|---|---|
 | Phase 0 -> Phase 1 | Daniel (**opened 2026-09-19**) | Codex review of the architecture recorded in the worklog; Phase 0 ADRs Accepted, amended, or rejected; open questions triaged (blocking vs. not); P1 research started or explicitly deferred; employer-IP question (BIZ-02) considered by Daniel |
-| Phase 1 -> next milestone (provisioning) | Daniel | Phase 1 exit criteria met and demonstrable; retrospective in the worklog |
+| Phase 1 -> Phase 2 external HRIS translation | Daniel (**opened 2026-09-22**) | Accepted workforce foundation and bounded inbound simulation plan |
+| Phase 2 -> next milestone | Daniel (not opened) | Completed [Phase 2 review](PHASE_2_CODEX_REVIEW.md), Q1–Q3 decisions and demo walkthrough |
 | Later | Daniel | Stated per phase below |
 
 ## Phase 0: Architecture and product definition (closed 2026-09-19)
@@ -34,7 +37,7 @@ They need code, so they belong to Phase 1. Each ends with a written result and, 
 | S7 Registry files | Format, loader, CI validation of status gates | ADR-0012, RQ-01 |
 | S8 Build tooling | Gradle vs. Maven; single build with packages vs. multi-module | ARCHITECTURE |
 
-## Phase 1: Authenticated workforce foundation (IMPLEMENTED, IN REVIEW)
+## Phase 1: Authenticated workforce foundation (ACCEPTED)
 
 **Goal.** One complete, usable vertical slice: an authenticated and authorized user can create, view and edit **synthetic** workforce records inside their Tenant, with tenant isolation, permission checks, revision history, lost-update protection, command idempotency, atomic audit, structured logs and meaningful automated tests.
 
@@ -43,6 +46,16 @@ They need code, so they belong to Phase 1. Each ends with a written result and, 
 **Out of scope (Daniel's explicit non-goals):** payroll, Workday/SAP/Oracle integration, Kafka/Redpanda, outbox dispatch, provisioning, incident management, integration topology, SLO dashboards, Prometheus/Grafana/tracing, statutory or country-policy execution, microservices, mobile app, and anything real (data or law).
 
 Full plan, definition of done and step order: [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md).
+
+## Phase 2: External HRIS translation foundation (IMPLEMENTED, OWNER REVIEW)
+
+**Goal.** Prove PalCheck can sit beside an external HRIS without coupling `workforce` to it: a mock Workday-shaped adapter feeds a small `integrations` module, which writes through a new `workforce.api` port that enforces who owns each value, records where it came from, and survives a partial failure without corrupting the rest of a sync.
+
+**In scope:** `integrations` (mock provider, normalized contract, sync run/item, field lineage); `workforce.api` write port; ownership marking on Employment and Assignment; a minimal Systems/Sync UI and a lineage disclosure on the record detail.
+
+**Out of scope (Daniel's explicit Phase 2 non-goals):** a real Workday integration or certification; SAP/Oracle connectors, even empty ones; Kafka/Redpanda/any broker; outbox/dispatcher; payroll; provisioning/equipment; incident management; SLO dashboards/Prometheus/Grafana/tracing; microservices; mobile app; anything real.
+
+Full plan, definition of done and step order: [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md). Backend review, UI, browser tests and cross-links are complete; see [Codex’s review](PHASE_2_CODEX_REVIEW.md). Q1–Q3 recommendations are ACCEPT; Daniel’s final acceptance is pending. Phase 3 is not opened.
 
 ## Provisioning milestone (formerly "Phase 1: Hire-to-provision vertical slice (standalone-first)"; numbering to be assigned by Daniel)
 
@@ -88,7 +101,7 @@ Workday-shaped connector; any statutory calculation or policy behavior; compensa
 Workday-shaped **reference HRIS** (separate mock process, synthetic data, no fidelity claim) plus adapter, versioned mapper, raw landing, sync runs, reconciliation, external identity links, the **ownership flip** with preview and audit, field lineage view, first measured SLO (worker sync),
 manual incidents, event explorer with redaction controls. **Test of success:** the ownership flip works on real fields **without changes to the core domain** ([ADR-0017](adr/0017-primary-product-mode.md)).
 
-## Phase 3: Depth and second-instance proof
+## Phase 3: Depth and second-instance proof (NOT OPENED)
 
 Change and termination processes; `compensation` and `timeandleave` modules (representation and orchestration only); replay and reprocess; observability stack; **the "Colombia test"** (document a second country's equivalents and compare, [localization/LATAM_STRATEGY.md](localization/LATAM_STRATEGY.md) section 5); revisit the broker decision against [ADR-0008](adr/0008-broker-none-yet.md) criteria; engage professional review for the first concepts intended to drive behavior.
 

@@ -6,6 +6,7 @@ import com.palcheck.access.api.Permission;
 import com.palcheck.platform.idempotency.Fingerprint;
 import com.palcheck.platform.idempotency.IdempotencyService;
 import com.palcheck.shared.ConflictException;
+import com.palcheck.shared.ExternallyOwnedException;
 import com.palcheck.shared.FieldViolation;
 import com.palcheck.shared.NotFoundException;
 import com.palcheck.shared.ValidationException;
@@ -34,6 +35,8 @@ public class EditEmploymentService {
 
     static final String EMPLOYMENT_OPERATION = "employment.update";
     static final String ASSIGNMENT_OPERATION = "assignment.update";
+    static final String EXTERNALLY_OWNED_MESSAGE =
+            "This record is managed by an external system and cannot be edited here.";
     private static final Logger LOG = LoggerFactory.getLogger(EditEmploymentService.class);
 
     private final Authorization authorization;
@@ -84,6 +87,9 @@ public class EditEmploymentService {
 
         Employment current = employments.find(actor.tenantId(), employmentId)
                 .orElseThrow(() -> new NotFoundException("The employment was not found."));
+        if (current.isExternallyOwned()) {
+            throw new ExternallyOwnedException(EXTERNALLY_OWNED_MESSAGE, current.ownedBySystem());
+        }
         if (current.version() != expectedVersion) {
             throw new ConflictException(EditPersonService.STALE, current.version());
         }
@@ -109,7 +115,8 @@ public class EditEmploymentService {
         if (!changes.isEmpty()) {
             Employment next = new Employment(current.id(), current.tenantId(), current.personId(),
                     current.legalEntityId(), applied.data(), current.version(), current.createdAt(),
-                    Instant.now(clock));
+                    Instant.now(clock), current.ownedBySystem(), current.externalWorkerId(),
+                    current.lastSyncedAt());
             if (!employments.update(next, expectedVersion)) {
                 throw new ConflictException(EditPersonService.STALE, employments
                         .currentVersion(actor.tenantId(), employmentId)
@@ -149,6 +156,9 @@ public class EditEmploymentService {
         assignments.lockReportingGraph(actor.tenantId());
         Assignment current = assignments.find(actor.tenantId(), assignmentId)
                 .orElseThrow(() -> new NotFoundException("The assignment was not found."));
+        if (current.isExternallyOwned()) {
+            throw new ExternallyOwnedException(EXTERNALLY_OWNED_MESSAGE, current.ownedBySystem());
+        }
         if (current.version() != expectedVersion) {
             throw new ConflictException(EditPersonService.STALE, current.version());
         }
@@ -176,7 +186,7 @@ public class EditEmploymentService {
         if (!changes.isEmpty()) {
             Assignment next = new Assignment(current.id(), current.tenantId(), current.employmentId(),
                     current.effectiveFrom(), current.effectiveTo(), applied.data(), current.version(),
-                    current.createdAt(), Instant.now(clock));
+                    current.createdAt(), Instant.now(clock), current.ownedBySystem(), current.lastSyncedAt());
             if (!assignments.update(next, expectedVersion)) {
                 throw new ConflictException(EditPersonService.STALE, assignments
                         .currentVersion(actor.tenantId(), assignmentId)

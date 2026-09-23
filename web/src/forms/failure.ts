@@ -5,6 +5,7 @@ import type { FieldError } from '../api/types'
 export type Failure =
   | { kind: 'validation'; fieldErrors: FieldError[] }
   | { kind: 'conflict' }
+  | { kind: 'externally-owned' }
   | { kind: 'forbidden' }
   | { kind: 'network' }
   | { kind: 'generic'; requestId?: string }
@@ -15,6 +16,8 @@ export function classify(error: unknown): Failure {
     switch (error.code) {
       case 'VALIDATION_ERROR':
         return { kind: 'validation', fieldErrors: error.problem?.errors ?? [] }
+      case 'EXTERNALLY_OWNED':
+        return { kind: 'externally-owned' }
       case 'CONFLICT':
         return { kind: 'conflict' }
       case 'FORBIDDEN':

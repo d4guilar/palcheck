@@ -1,9 +1,9 @@
 # ADR-0020: Workforce Foundation Before Provisioning
 
-**Status:** Accepted in part (Daniel Aguilar, 2026-09-19): decisions 1 to 3 and 8 accepted; decisions 4 to 7 followed provisionally by Phase 1, confirmation requested
+**Status:** Accepted in part (Daniel Aguilar, 2026-09-19): decisions 1 to 3 and 8 accepted on 2026-09-19; Q1 accepts decisions 4 and 5 and the RLS-deferral portion of decision 6 on 2026-09-21; the rest of decision 6 and decision 7 remain provisional
 **Date:** 2026-09-19
 
-## Acceptance record (2026-09-19, recorded by Claude on Daniel's instruction)
+## Acceptance record (2026-09-19; Q1 resolution added 2026-09-21)
 
 Daniel approved refinement 6 (smaller implementation milestones) and opened **Phase 1: Authenticated Workforce Foundation**. Phase 1 is explicitly *not* payroll, Workday integration, event broker infrastructure, provisioning, incident management, integration topology, full localization, legal automation, or an observability platform.
 
@@ -12,9 +12,9 @@ Daniel approved refinement 6 (smaller implementation milestones) and opened **Ph
 | 1 | **ACCEPTED** | Phase 1 scope is the authenticated workforce foundation. Daniel's message refines it (Person, Employment, Assignment, Legal Entity, Org Unit; create/view/edit; audit history; optimistic concurrency; command idempotency). |
 | 2 | **ACCEPTED** | Outbox runtime, separate lifecycle/operations modules, destination simulators, HRIS sync and registry projection/UI are deferred. |
 | 3 | **ACCEPTED** | Foundation, then provisioning, then overlay. Numbering of the later milestones is Daniel's to assign; existing gates are not renumbered here. |
-| 4 | Provisional | Followed: one Maven build with a wrapper, ordinary Java packages with ArchUnit tests, **Spring JDBC** with explicit repositories. Spring Modulith and JPA are not used. Recorded in [ADR-0022](0022-phase1-technical-baseline.md). |
-| 5 | Provisional | Followed: same-origin OIDC login with a backend-managed session (Spring Security), CSRF protection, no browser-held tokens. Recorded in ADR-0022. |
-| 6 | Provisional | Followed with decisions instead of open-ended spikes; row-level security is **deferred** (see ADR-0022). |
+| 4 | **ACCEPTED (Q1, 2026-09-21)** | one Maven build with a wrapper, ordinary Java packages with ArchUnit tests, **Spring JDBC** with explicit repositories. Spring Modulith and JPA are not used. Recorded in [ADR-0022](0022-phase1-technical-baseline.md). |
+| 5 | **ACCEPTED (Q1, 2026-09-21)** | same-origin OIDC login with a backend-managed session (Spring Security), CSRF protection, no browser-held tokens. Recorded in ADR-0022. |
+| 6 | **ACCEPTED in part (Q1, 2026-09-21)** | RLS deferral is accepted under ADR-0022 decision 9; the other temporal/history and focused-precondition choices retain their provisional status. |
 | 7 | Provisional | Followed: PostgreSQL + Keycloak (development identity provider) via Docker Compose; backend and frontend run on the host. |
 | 8 | **ACCEPTED** | Legal gates intact; no invented rules; no sensitive fields added for demonstration; synthetic record IDs are application IDs, not national IDs. |
 
@@ -27,9 +27,9 @@ Claude's Phase 1 includes seven modules, temporal processing, three destinations
 1. Propose Phase 1 as an authenticated workforce foundation: access/workforce/audit, minimal Person/Employment/Assignment and Legal Entity/Org Unit references, tenant-scoped read/edit/audit, valid dates/revisions, default `PALCHECK` governed-field policy, atomic audit/command receipts, synthetic data, logs/health and an accessible People record/view/edit flow.
 2. Defer outbox runtime, separate lifecycle/operations modules, destination simulators, future-effective dispatch, HRIS sync and registry projection/UI until their own milestone. Do not create empty infrastructure or provider/country implementations.
 3. Follow foundation with a provisioning milestone proving independent destination failure, safe retry and crash recovery under ADR-0019. Follow that with the overlay milestone proving checkpoint-safe sync and ownership cutover. Daniel chooses whether these are Phase 1B/2 or another numbering; existing roadmap gates are not changed by this proposal.
-4. Recommend one Maven build, ordinary Java packages and ArchUnit tests; Spring JDBC with explicit repositories for the initial persistence scope. Reconsider mapping tooling only with demonstrated pain. Versions and compatibility are chosen after the phase opens.
-5. Prefer same-origin OIDC login with backend-managed browser sessions in the same application, rather than requiring browser-held tokens. External identity provider remains responsible for authentication/passwords. Distinguish OIDC login from optional later OAuth2 resource-server support for bearer API clients. CSRF/cookie/logout/revocation behavior is part of acceptance, not deferred hardening.
-6. Run only focused preconditions: temporal/history integrity and tenant/RLS before persistence, authentication/session before authenticated UI. Outbox evaluation waits for provisioning; registry loader/file-format work waits for actual content delivery. No mandatory comparative experiment for every build/UI tool.
+4. **Accepted by Q1:** one Maven build, ordinary Java packages and ArchUnit tests; Spring JDBC with explicit repositories for the initial persistence scope. Reconsider mapping tooling only with demonstrated pain. Versions and compatibility are chosen after the phase opens.
+5. **Accepted by Q1:** same-origin OIDC login with backend-managed browser sessions in the same application, rather than requiring browser-held tokens. External identity provider remains responsible for authentication/passwords. Distinguish OIDC login from optional later OAuth2 resource-server support for bearer API clients. CSRF/cookie/logout/revocation behavior is part of acceptance, not deferred hardening.
+6. Run only focused preconditions: temporal/history integrity and tenant isolation before persistence, authentication/session before authenticated UI. **Q1 amendment (2026-09-21): RLS is deferred for Phase 1; no RLS spike is required before persistence.** Outbox evaluation waits for provisioning; registry loader/file-format work waits for actual content delivery. No mandatory comparative experiment for every build/UI tool.
 7. Keep PostgreSQL + one development IdP as local dependencies; backend/frontend run on the host first. Add GitHub Actions with actual code, tests and builds. No broker, dashboard stack or full mock environment to load People.
 8. Keep the legal research track independent and all gates intact. Do not add sensitive fields or invented legal rules for demonstration. Phase 1 synthetic record IDs are application IDs, not national IDs.
 

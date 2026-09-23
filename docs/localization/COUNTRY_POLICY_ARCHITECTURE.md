@@ -92,6 +92,8 @@ None exist in Phase 1.
 
 ## 6. Guardrails against distortion
 
+**Accepted Phase 1 vocabulary boundary (Q3, 2026-09-21):** core employment status/type values are software/domain placeholders, not a country policy or legal classification. They must not determine statutory calculations, legal eligibility or compliance. Any future researched local vocabulary, metadata and explicit mappings belong to the separate country-policy concepts described here; similarly named values alone do not establish equivalence. See [DOMAIN_MODEL.md section 4.1](../DOMAIN_MODEL.md#41-accepted-phase-1-employment-vocabulary). No policy capability is implemented by this acceptance.
+
 | Guardrail | Mechanism (when implemented) |
 |---|---|
 | No behavior on unverified law | A `BehaviorBinding` may be created only against a `ConceptVersion` with status `VERIFIED` and verification level `PROFESSIONAL_REVIEWED`; CI validates this over the registry files |

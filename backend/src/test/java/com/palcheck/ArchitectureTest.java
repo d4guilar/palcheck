@@ -28,23 +28,30 @@ class ArchitectureTest {
     static final ArchRule sharedKernelDependsOnNothingInThisProject = noClasses().that()
             .resideInAPackage("com.palcheck.shared..")
             .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.platform..", "com.palcheck.access..",
-                    "com.palcheck.audit..", "com.palcheck.workforce..");
+                    "com.palcheck.audit..", "com.palcheck.workforce..", "com.palcheck.integrations..");
 
     @ArchTest
     static final ArchRule platformIsTechnicalAndDependsOnNoModule = noClasses().that()
             .resideInAPackage("com.palcheck.platform..")
             .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.access..", "com.palcheck.audit..",
-                    "com.palcheck.workforce..");
+                    "com.palcheck.workforce..", "com.palcheck.integrations..");
 
     @ArchTest
     static final ArchRule auditNeverDependsOnAccessOrWorkforce = noClasses().that()
             .resideInAPackage("com.palcheck.audit..")
-            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.access..", "com.palcheck.workforce..");
+            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.access..", "com.palcheck.workforce..",
+                    "com.palcheck.integrations..");
 
     @ArchTest
     static final ArchRule accessNeverDependsOnWorkforce = noClasses().that()
             .resideInAPackage("com.palcheck.access..")
-            .should().dependOnClassesThat().resideInAPackage("com.palcheck.workforce..");
+            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.workforce..", "com.palcheck.integrations..");
+
+    @ArchTest
+    static final ArchRule workforceNeverDependsOnIntegrations = noClasses().that()
+            .resideInAPackage("com.palcheck.workforce..")
+            .should().dependOnClassesThat().resideInAPackage("com.palcheck.integrations..")
+            .because("integrations writes through workforce.api; workforce must never call back into it (ADR-0024)");
 
     // --- only the api package is visible across modules -----------------------------------------------------
 
@@ -64,6 +71,32 @@ class ArchitectureTest {
             .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.workforce.domain..",
                     "com.palcheck.workforce.application..", "com.palcheck.workforce.infrastructure..",
                     "com.palcheck.workforce.web..");
+
+    @ArchTest
+    static final ArchRule nothingOutsideIntegrationsUsesItsInternals = noClasses().that()
+            .resideOutsideOfPackage("com.palcheck.integrations..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.integrations.domain..",
+                    "com.palcheck.integrations.application..", "com.palcheck.integrations.infrastructure..",
+                    "com.palcheck.integrations.web..")
+            .because("integrations has no api package yet (ADR-0024): nothing outside it may depend on it at all");
+
+    @ArchTest
+    static final ArchRule integrationsDependsOnlyOnItsAllowedNeighbours = classes().that()
+            .resideInAPackage("com.palcheck.integrations..").should().onlyDependOnClassesThat()
+            .resideInAnyPackage("com.palcheck.integrations..", "com.palcheck.workforce.api..",
+                    "com.palcheck.access.api..", "com.palcheck.audit.api..", "com.palcheck.platform..",
+                    "com.palcheck.shared..", "java..", "jakarta..", "org.springframework..", "org.slf4j..",
+                    "tools.jackson..", "com.fasterxml.jackson.annotation..")
+            .because("integrations may write workforce data only through workforce.api (ADR-0024)");
+
+    @ArchTest
+    static final ArchRule providerVocabularyNeverLeavesTheAdapterPackage = noClasses().that()
+            .resideOutsideOfPackage("com.palcheck.integrations.application.provider..")
+            .should().dependOnClassesThat().haveSimpleName("WorkdayWorkerRecord")
+            .orShould().dependOnClassesThat().haveSimpleName("WorkdayPullResult")
+            .orShould().dependOnClassesThat().haveSimpleName("MockWorkdayProvider")
+            .orShould().dependOnClassesThat().haveSimpleName("WorkdayMapper")
+            .because("a provider's own field names and codes never leave its adapter package (INTEGRATION_ARCHITECTURE.md principle 2)");
 
     // --- layering inside the workforce module --------------------------------------------------------------
 
@@ -89,6 +122,26 @@ class ArchitectureTest {
             .orShould().dependOnClassesThat().haveSimpleNameEndingWith("Repository");
 
     @ArchTest
+    static final ArchRule integrationsDomainIsFrameworkFree = noClasses().that()
+            .resideInAPackage("com.palcheck.integrations.domain..")
+            .should().dependOnClassesThat().resideInAnyPackage("org.springframework..", "jakarta..", "tools.jackson..",
+                    "com.fasterxml..", "java.sql..", "com.palcheck.integrations.application..",
+                    "com.palcheck.integrations.infrastructure..", "com.palcheck.integrations.web..");
+
+    @ArchTest
+    static final ArchRule integrationsApplicationDoesNotKnowInfrastructureOrWeb = noClasses().that()
+            .resideInAPackage("com.palcheck.integrations.application..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.integrations.infrastructure..",
+                    "com.palcheck.integrations.web..", "org.springframework.jdbc..");
+
+    @ArchTest
+    static final ArchRule integrationsControllersNeverTouchRepositoriesOrSql = noClasses().that()
+            .resideInAPackage("com.palcheck.integrations.web..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.integrations.infrastructure..",
+                    "org.springframework.jdbc..", "java.sql..")
+            .orShould().dependOnClassesThat().haveSimpleNameEndingWith("Repository");
+
+    @ArchTest
     static final ArchRule persistenceStaysInInfrastructure = noClasses().that()
             .resideOutsideOfPackages("..infrastructure..", "..internal..", "com.palcheck.platform..")
             .should().dependOnClassesThat().resideInAPackage("org.springframework.jdbc..");
@@ -107,14 +160,24 @@ class ArchitectureTest {
         }
 
         private boolean isTenantOwned(JavaClass type) {
-            return type.getPackageName().equals("com.palcheck.workforce.domain")
-                    && type.getSimpleName().matches("Person|Employment|Assignment|LegalEntity|OrgUnit");
+            return (type.getPackageName().equals("com.palcheck.workforce.domain")
+                    && type.getSimpleName().matches("Person|Employment|Assignment|LegalEntity|OrgUnit"))
+                    || (type.getPackageName().equals("com.palcheck.integrations.domain")
+                    && type.getSimpleName().matches("SyncRun|SyncItem|ExternalSystem|FieldLineage"));
         }
     };
 
     @ArchTest
     static final ArchRule everyWorkforceRepositoryMethodNamesATenant = methods().that()
             .arePublic().and().areDeclaredInClassesThat().resideInAPackage("com.palcheck.workforce.infrastructure..")
+            .and().areDeclaredInClassesThat().haveSimpleNameStartingWith("Jdbc")
+            .and().areNotStatic()
+            .should(TAKE_A_TENANT)
+            .because("a query must never be writable without stating whose data it touches");
+
+    @ArchTest
+    static final ArchRule everyIntegrationsRepositoryMethodNamesATenant = methods().that()
+            .arePublic().and().areDeclaredInClassesThat().resideInAPackage("com.palcheck.integrations.infrastructure..")
             .and().areDeclaredInClassesThat().haveSimpleNameStartingWith("Jdbc")
             .and().areNotStatic()
             .should(TAKE_A_TENANT)

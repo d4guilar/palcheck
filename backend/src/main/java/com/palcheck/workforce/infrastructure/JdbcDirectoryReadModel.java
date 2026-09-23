@@ -134,11 +134,14 @@ class JdbcDirectoryReadModel implements DirectoryReadModel {
         return jdbc.sql("""
                         SELECT e.id, e.tenant_id, e.person_id, e.legal_entity_id, e.status, e.employment_type,
                                e.country, e.start_date, e.end_date, e.version, e.created_at, e.updated_at,
+                               e.owned_by_system AS e_owner, e.external_worker_id AS e_external_id,
+                               e.last_synced_at AS e_synced,
                                le.name AS le_name, le.country AS le_country,
                                a.id AS a_id, a.org_unit_id AS a_org_unit_id, a.title AS a_title,
                                a.manager_employment_id AS a_manager, a.effective_from AS a_from,
                                a.effective_to AS a_to, a.version AS a_version,
                                a.created_at AS a_created, a.updated_at AS a_updated,
+                               a.owned_by_system AS a_owner, a.last_synced_at AS a_synced,
                                ou.parent_id AS ou_parent, ou.name AS ou_name,
                                mp.id AS mgr_person_id, mp.first_name AS mgr_first,
                                mp.preferred_name AS mgr_preferred, mp.last_name AS mgr_last
@@ -166,7 +169,8 @@ class JdbcDirectoryReadModel implements DirectoryReadModel {
                 new EmploymentData(EmploymentStatus.valueOf(rs.getString("status")),
                         EmploymentType.valueOf(rs.getString("employment_type")), rs.getString("country"),
                         rs.getObject("start_date", LocalDate.class), rs.getObject("end_date", LocalDate.class)),
-                rs.getLong("version"), Sql.instant(rs, "created_at"), Sql.instant(rs, "updated_at"));
+                rs.getLong("version"), Sql.instant(rs, "created_at"), Sql.instant(rs, "updated_at"),
+                rs.getString("e_owner"), rs.getString("e_external_id"), Sql.instantOrNull(rs, "e_synced"));
         LegalEntity entity = new LegalEntity(employment.legalEntityId(), tenantId, rs.getString("le_name"),
                 rs.getString("le_country"));
 
@@ -177,7 +181,8 @@ class JdbcDirectoryReadModel implements DirectoryReadModel {
             Assignment assignment = new Assignment(assignmentId, tenantId, employment.id(),
                     rs.getObject("a_from", LocalDate.class), rs.getObject("a_to", LocalDate.class),
                     new AssignmentData(rs.getString("a_title"), orgUnitId, Sql.uuid(rs, "a_manager")),
-                    rs.getLong("a_version"), Sql.instant(rs, "a_created"), Sql.instant(rs, "a_updated"));
+                    rs.getLong("a_version"), Sql.instant(rs, "a_created"), Sql.instant(rs, "a_updated"),
+                    rs.getString("a_owner"), Sql.instantOrNull(rs, "a_synced"));
             OrgUnit unit = new OrgUnit(orgUnitId, tenantId, Sql.uuid(rs, "ou_parent"), rs.getString("ou_name"));
             EmploymentView.ManagerRef manager = null;
             UUID managerEmployment = Sql.uuid(rs, "a_manager");

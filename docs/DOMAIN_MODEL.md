@@ -1,5 +1,7 @@
 # Domain Model (conceptual)
 
+> **Phase 2 software behavior (2026-09-22):** Employment and Assignment gain external ownership; Employment also carries the stable external worker identity. Their local PATCH is refused with `409 EXTERNALLY_OWNED`. Person identity is initialized on first import and stays locally editable; subsequent imports preserve it. Entity ownership does not imply legal classification. Sync run/item and field-lineage metadata belong to `integrations`, not workforce. Per-field policy, automatic termination from absence, legal-entity transfers and full temporal reconciliation are not implemented. See [ADR-0025](adr/0025-ownership-lineage-and-sync-model-phase2.md), the [plan](PHASE_2_IMPLEMENTATION_PLAN.md) and [review](PHASE_2_CODEX_REVIEW.md).
+
 > **Reconciliation notice (2026-09-19):** the Phase 1 domain (Tenant, Legal Entity, Org Unit, Person, Employment, Assignment) is specified concretely in [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md) section 4. Phase 1 keeps valid business dates and per-row revisions; audit-derived recorded time below is **evidence, not an implemented bitemporal query model** ([ADR-0018](adr/0018-module-transactions-and-persistence.md) decision 7, provisional). `workforce` owns the committed hire fact.
 
 Status: Phase 0 draft · Conceptual only. This is **not** a schema, and no persistence decisions are implied beyond the
@@ -58,7 +60,17 @@ Ownership by module is in [MODULES.md](MODULES.md).
 - **Local supplemental data** (PalCheck-owned): data local concepts need that a global model has no place for, attached to an
   Employment. Which fields exist is a research output, not a Phase 0 decision.
 
+### 4.1 Accepted Phase 1 employment vocabulary
+
+**Q3 ACCEPTED by Daniel on 2026-09-21 — SOFTWARE / DOMAIN PLACEHOLDERS.** The implemented `Employment.status` values are `PENDING`, `ACTIVE`, `ENDED`; `Employment.employmentType` values are `FULL_TIME`, `PART_TIME`. These support record creation, editing, display and structural validation in Phase 1. They are not a complete or legally authoritative Costa Rican classification, must not drive statutory calculations, and imply neither legal eligibility nor compliance. `ENDED` records a software lifecycle state, without deciding a legal reason for ending employment.
+
+In the accepted label, "placeholders" means *not legally authoritative*, not *temporary*. These five values are **core PalCheck software vocabulary**, deliberately legally neutral, and they may remain valid after Costa Rican localization exists (for example, `FULL_TIME` can stay a PalCheck concept while a verified country policy later attaches local meaning or a mapping to it). Localized legal concepts live in the Country Policy layer ([COUNTRY_POLICY_ARCHITECTURE.md](localization/COUNTRY_POLICY_ARCHITECTURE.md)), not in these enums; no such policy exists in Phase 1, and no new values were added by Q3.
+
+The conceptual worker-type examples above and process stages below are not additional Phase 1 enum values. Core software vocabulary remains separate from country-specific legal vocabulary. Future verified research may require richer local classifications, explicit mappings, additional metadata, country-policy concepts or different terminology; it does not establish equivalence from similar labels or necessarily replace the core values. WC-1/WC-4 and termination research remain `UNRESEARCHED`; legal behavior remains `NOT IMPLEMENTED`. See [the accepted plan](PHASE_1_IMPLEMENTATION_PLAN.md#16-risks-and-open-questions) and [Costa Rica research backlog](localization/costa-rica/RESEARCH_BACKLOG.md).
+
 ## 5. Employment lifecycle
+
+Conceptual process stages, not the stored Phase 1 status set (section 4.1):
 
 ```
 Hire request (pre-hire)
@@ -129,7 +141,7 @@ Internal domain events and published integration events are different things; on
 Keep two kinds of rules apart:
 
 - **Invariants** PalCheck enforces regardless of country (examples): an Employment belongs to exactly one Legal Entity; an Assignment
-  belongs to exactly one Employment; a terminated Employment has an end date; every record belongs to exactly one Tenant.
+  belongs to exactly one Employment; an `ENDED` Employment has an end date (software record integrity, not a legal requirement); every record belongs to exactly one Tenant.
 - **Policy** that varies by jurisdiction (examples of *questions*, not answers): may a Person hold overlapping Employments in one
   Legal Entity? what data is mandatory at hire? Those are `countrypolicy` questions and are RESEARCH REQUIRED. Do not encode them
   as invariants.
@@ -148,4 +160,4 @@ precluded.
   temporal tables? Decide with a spike before the first schema; affects [ADR-0003](adr/0003-postgresql-and-tenancy.md).
 - **OQ-04** Does a Person span tenants (e.g., a contractor for two customers)? Default: no, a Person is tenant-scoped.
 - **OQ-05** What is the minimum local supplemental data for a Costa Rican hire? Output of research, not a design guess.
-- **OQ-06** Status taxonomy: what PalCheck set can represent both external HRIS statuses and local ones without distortion?
+- **OQ-06** Future status mappings: how should external HRIS statuses and researched local concepts relate to PalCheck's accepted Phase 1 software states (section 4.1) without distortion? Legal meaning and mappings remain RESEARCH REQUIRED; Q3's software vocabulary is resolved.

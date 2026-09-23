@@ -1,11 +1,11 @@
 # Phase 1 Implementation Plan: Authenticated Workforce Foundation
 
-Status: **Phase 1 implemented; awaiting Daniel's review** (opened by Daniel Aguilar, 2026-09-19) · Owner of decisions: Daniel · Author: Claude Code · Last updated: 2026-09-19
-Architecture baseline: [ARCHITECTURE.md](ARCHITECTURE.md), [MODULES.md](MODULES.md) section 2a, [DOMAIN_MODEL.md](DOMAIN_MODEL.md), [SECURITY.md](SECURITY.md), [CODEX_ARCHITECTURE_REVIEW.md](CODEX_ARCHITECTURE_REVIEW.md), ADR-0018 to ADR-0021 (accepted in part) and [ADR-0022](adr/0022-phase1-technical-baseline.md) (Proposed).
+Status: **Phase 1 implemented; awaiting Daniel's review** (opened by Daniel Aguilar, 2026-09-19) · Owner of decisions: Daniel · Author: Claude Code · Last updated: 2026-09-21
+Architecture baseline: [ARCHITECTURE.md](ARCHITECTURE.md), [MODULES.md](MODULES.md) section 2a, [DOMAIN_MODEL.md](DOMAIN_MODEL.md), [SECURITY.md](SECURITY.md), [CODEX_ARCHITECTURE_REVIEW.md](CODEX_ARCHITECTURE_REVIEW.md), ADR-0018 to ADR-0021 (accepted in part) and [ADR-0022](adr/0022-phase1-technical-baseline.md) (Accepted in part: Q1 choices accepted by Daniel on 2026-09-21).
 
 This plan is the contract for Phase 1. Anything not in it is out of scope. Each implementation step ends with tests, a worklog entry and, if reality differs from this plan, an update to this file.
 
-> **Codex review follow-up (2026-09-19):** Phase 1 fixes and UI polish are complete; Daniel's acceptance remains pending. [PHASE_1_CODEX_REVIEW.md](PHASE_1_CODEX_REVIEW.md) records independent findings and final test results. Section 18 below records the implementation delta; earlier delivery counts remain historical evidence.
+> **Codex review follow-up (2026-09-19):** The functional Phase 1 foundation is accepted by Daniel. The dedicated UI polish pass is documented in [UI_PHASE_1_APPLE_POLISH.md](UI_PHASE_1_APPLE_POLISH.md); release verification remains separate. Daniel accepted Q1 and Q3 and accepted Q2 with amendment on 2026-09-21. [PHASE_1_CODEX_REVIEW.md](PHASE_1_CODEX_REVIEW.md) records independent findings and final test results. Section 18 below records the implementation delta; earlier delivery counts remain historical evidence.
 
 ## 1. Objective and definition of done
 
@@ -35,7 +35,7 @@ This plan is the contract for Phase 1. Anything not in it is out of scope. Each 
 | 16 | Frontend is keyboard accessible | Component tests with axe; **real-browser axe scan (WCAG 2.0 to 2.2 A/AA including contrast and target size) of sign-in, list, create, create with errors, detail, detail editing and the no-workspace page, plus sign-in, list and an error state in the dark scheme**; a keyboard-only journey (skip link, search, open record, edit, cancel); focus-management tests; reduced-motion check | done for everything automatable. **A manual screen-reader pass has not been performed** |
 | 17 | Automated tests cover critical behavior | Backend 150 (58 unit including 15 architecture rules, 92 integration on real PostgreSQL); frontend 92; browser end-to-end 12 | done |
 | 18 | No real employee/employer data | All seed and test data fictional; every email on a reserved domain (`.example`, `example.test`); grep review 2026-09-19; no real credentials committed (`.env` untracked, placeholders in `.env.example`) | done |
-| 19 | No unverified Costa Rican law is executable | No legal behavior implemented; grep of code, config and tests for legal terms and country-specific branching found none (`CR` appears only as seed data). Placeholder statuses and types are labelled as software placeholders in the domain and in the UI | done |
+| 19 | No unverified Costa Rican law is executable | No legal behavior implemented; grep of code, config and tests for legal terms and country-specific branching found none (`CR` appears only as seed data). The employment status and type vocabularies are core software/domain vocabulary, deliberately legally neutral (Q3 accepted), and are labelled as such in the domain code, the docs and the employment-type form hint | done |
 | 20 | Documentation matches the system | Step 13 cleanup: README, LOCAL_DEVELOPMENT, ARCHITECTURE section 11, SECURITY section 17, ADR-0022 outcome notes, ADR index, this plan | done, pending Daniel's review |
 
 ## 2. Scope
@@ -119,7 +119,7 @@ All identifiers are application-generated UUIDs. Timestamps are `timestamptz` (U
 | **Employment** (`workforce`) | id, tenantId, personId, legalEntityId, status, employmentType, country, startDate, endDate?, version | Person and Legal Entity in the same tenant (composite FKs); legal entity immutable after creation; `ENDED` requires `endDate`; `endDate >= startDate`; a Person may have several Employments over time (rehire is a new Employment) |
 | **Assignment** (`workforce`) | id, tenantId, employmentId, orgUnitId, title, managerEmploymentId?, effectiveFrom, effectiveTo?, version | Employment, Org Unit and manager in the same tenant; manager is not the employee and creates no reporting cycle; **at most one current assignment (`effective_to IS NULL`) per employment** (partial unique index); `effectiveFrom` is not before the employment start |
 
-Notes on placeholder vocabularies (**SOFTWARE BEHAVIOR, not legal concepts**): employment `status` is `PENDING`, `ACTIVE` or `ENDED`; `employmentType` is `FULL_TIME` or `PART_TIME`. They are organizational classifications, not legal contract or worker types (Costa Rica worker-type research WC-1 will decide the real taxonomy). The country field records where the employment is located; no rule branches on it.
+**Q3 ACCEPTED by Daniel on 2026-09-21: SOFTWARE / DOMAIN PLACEHOLDERS.** Employment `status` is `PENDING`, `ACTIVE` or `ENDED`; `employmentType` is `FULL_TIME` or `PART_TIME`. These values support Phase 1 workforce software behavior. They are neither complete nor legally authoritative Costa Rican employment categories, must not drive statutory calculations, and imply no legal eligibility or compliance. The country field records where the employment is located; no rule branches on it. Future verified research (including WC-1 and WC-4) may require richer local classifications, mappings, metadata, country-policy concepts or different terminology. Core software vocabulary and country-specific legal vocabulary remain separate; research does not automatically replace these stable values. See [the domain vocabulary boundary](DOMAIN_MODEL.md#41-accepted-phase-1-employment-vocabulary).
 
 **History semantics.** Current-state tables are authoritative. The assignment carries `effectiveFrom`/`effectiveTo` so a future job change closes one row and opens another; in Phase 1 editing the assignment is an in-place *correction* with an audit entry and a version bump. Audit is evidence of change, not a bitemporal query model ([ADR-0018](adr/0018-module-transactions-and-persistence.md) decision 7, provisional).
 
@@ -136,16 +136,31 @@ Notes on placeholder vocabularies (**SOFTWARE BEHAVIOR, not legal concepts**): e
 | Aspect | Behavior |
 |---|---|
 | Header | `Idempotency-Key` (1 to 128 characters of `[A-Za-z0-9_.:-]`, UUID recommended). **Required on `POST /api/people`**, optional on `PATCH` endpoints; never applied to reads |
-| Request identity | SHA-256 of a canonical, deterministic rendering of the parsed command (independent of field order and whitespace) |
-| Same key + same request | Returns the original outcome (same status, `Location`) with `Idempotency-Replayed: true`. The body is the resource's **current** representation (no personal data is copied into the receipt), read under the caller's current authorization |
-| Same key + different request | `422 IDEMPOTENCY_CONFLICT` |
-| Different principal or tenant, same key | Independent (scope includes both) |
-| Expiry | 24 hours (configurable). Expired same-key rows are removed at reservation time, and an hourly job purges the rest |
+| Request identity | SHA-256 of a canonical, deterministic rendering of the parsed command (independent of JSON field order and formatting) |
+| Same scoped key + equivalent request during the guaranteed retry window | Returns the original outcome (same status, `Location`) with `Idempotency-Replayed: true`. The body is the resource's **current** representation (no personal data is copied into the receipt), read under the caller's current authorization |
+| Same scoped key + materially different request during the guaranteed retry window | `422 IDEMPOTENCY_CONFLICT`; no business or audit mutation |
+| Different principal, tenant or operation, same key | Independent namespaces; a retry must retain the original authenticated principal as well as tenant/operation/key |
+| Guaranteed retry window | At least 24 hours from the original successful write's receipt completion, inside its transaction. `palcheck.idempotency.ttl` defaults to `PT24H`; startup rejects shorter values. Replays do not extend the window; its exact deadline is included |
+| After the guaranteed retry window | The original receipt/result reference may be unavailable. Current implementation deletes past-deadline receipts at same-key reservation or through periodic purge; normal validation/concurrency rules then apply. This does **not** establish that repeating the business operation is safe or equivalent |
 | Not covered | Cross-operation deduplication; business-operation identity for downstream effects (accepted requirement, later milestones) |
+
+### Guaranteed retry window: API contract and configuration
+
+**Q2 ACCEPTED WITH AMENDMENT by Daniel on 2026-09-21.** For an authorized retry of a successfully committed write, the same valid key in the same tenant + authenticated principal + operation namespace with equivalent payload reconstructs the prior logical result during the guaranteed retry window. It does not repeat the mutation or its audit entry. Current authorization still applies; disabled accounts or lost permissions do not gain access through replay. The body is the resource's current representation, not an archived response. Create replay retains status 201 and Location; patch replay retains status 200. Both carry `Idempotency-Replayed: true`.
+
+Payload identity is the existing canonical parsed-command SHA-256 fingerprint, independent of JSON property order or formatting. Create normalizes its domain fields; patches preserve the distinction between absent, clear and supplied values, and include target ID and expectedVersion. Clients should retry the same submitted command, not replace expectedVersion or reinterpret changed resource data. Different material command content in the same namespace yields 422 IDEMPOTENCY_CONFLICT while its receipt is protected. Other tenants, operations and authenticated principals use independent namespaces; Q2 does not introduce cross-user deduplication.
+
+The receipt is reserved and completed in the same transaction as business/audit changes. Rollback leaves no committed receipt or business effect. Concurrent equal requests serialize on the scoped primary key and return one resource; competing different payloads produce one accepted write and conflicts. `expires_at` is a receipt-retention deadline, not permission to resend. The original completion sets it no earlier than completion time plus the configured window, so execution/lock-wait time before completion cannot consume the guaranteed retry period. Cleanup uses a strict `< now` comparison; exact-deadline retries remain protected. Replays leave that deadline unchanged.
+
+**Why 24 hours:** a current Phase 1 product choice gives clients a predictable day to recover from a lost response or interrupted session while keeping receipt storage/cleanup bounded. It is not a universal distributed-systems rule, a measured workload optimum, or a permanent business-effect identity. The default is explicit in `backend/src/main/resources/application.yml`; `IdempotencyService` also provides `PT24H` as its fallback. The existing configuration key `palcheck.idempotency.ttl` (environment `PALCHECK_IDEMPOTENCY_TTL`, or `--palcheck.idempotency.ttl=PT48H`) remains compatible; its meaning is the guaranteed retry window. Durations below 24 hours fail startup under this accepted contract. A longer duration is configurable without schema changes; a future shorter product guarantee requires an explicit contract change, not just an operational override. Existing stored deadlines are not rewritten when configuration changes.
+
+The hourly purge uses `palcheck.idempotency.purge-interval` (default `PT1H`), initial delay `palcheck.idempotency.purge-initial-delay` (`PT5M`), and `purge-enabled` (default true, disabled in tests). Physical deletion may occur later than the deadline. Disabling purge does not extend the public guarantee: a same-key request can remove its old receipt lazily.
+
+**After the window:** PalCheck no longer guarantees the original stored result remains available. A request may be evaluated as a new command: it may fail existing email uniqueness/version checks or may create another resource if current data permits. The first resource and audit history are not deleted with the receipt. Callers must reconcile the outcome before another business action and must not assume that either the old key or a new key makes a post-window retry equivalent to the original operation. Idempotency still matters; expiry is about receipt availability, not proof that the prior effect never happened.
 
 ## 6. Authentication
 
-Standards-based **OIDC authorization code flow** with Spring Security `oauth2Login`, **same-origin backend-managed session** ([ADR-0022](adr/0022-phase1-technical-baseline.md); ADR-0020 decision 5 provisional). Tokens never reach browser JavaScript. Keycloak is a development identity provider behind standard OIDC configuration; PalCheck code depends on no Keycloak type, and the domain never sees the IdP.
+Standards-based **OIDC authorization code flow** with Spring Security `oauth2Login`, **same-origin backend-managed session** ([ADR-0022](adr/0022-phase1-technical-baseline.md); ADR-0020 decision 5 accepted by Daniel through Q1 on 2026-09-21). Tokens never reach browser JavaScript. Keycloak is a development identity provider behind standard OIDC configuration; PalCheck code depends on no Keycloak type, and the domain never sees the IdP.
 
 - **Flow.** SPA calls `GET /api/session`. `401` means sign in: the SPA navigates the browser to `/oauth2/authorization/keycloak`. After login the browser returns to the app with a session cookie (`HttpOnly`, `SameSite=Lax`, `Secure` outside local development).
 - **Session and CSRF.** Session fixation protection on. CSRF protection uses the cookie-token pattern for SPAs (`XSRF-TOKEN` cookie, `X-XSRF-TOKEN` header on mutating requests). Restarting the single instance ends sessions (documented; persistence is not justified yet).
@@ -182,6 +197,8 @@ Scope in Phase 1 is **tenant-wide only**. The `Actor` type carries permissions w
 
 Unversioned JSON API under `/api` (the SPA is the only client). All endpoints require authentication, except the health probes.
 
+**Employment vocabulary (Q3 ACCEPTED):** request/response `status` and directory `employmentStatus` use `PENDING`, `ACTIVE`, `ENDED`; `employmentType` uses `FULL_TIME`, `PART_TIME`. These are software/domain placeholders with the boundary in section 4, not legal classifications. API consumers must not infer statutory calculations, legal eligibility or compliance from them, including when `country` is `CR`. Requiring an end date for `ENDED` is a software record-integrity rule, not a Costa Rican legal requirement.
+
 | Method and path | Permission | Purpose |
 |---|---|---|
 | `GET /api/session` | authenticated + mapped principal | current user, tenant and permission list (bootstrap) |
@@ -198,6 +215,8 @@ Unversioned JSON API under `/api` (the SPA is the only client). All endpoints re
 | `GET /actuator/health/liveness`, `/readiness` | none | operational probes |
 
 Deviation from Daniel's sketch (documented, cleaner boundary): employment is read through `GET /api/people/{id}/employments` (plural; rehire is a real case) and assignment edits use their own resource so each has its own version. Detail endpoints are split by permission (`VIEW_PERSON` vs. `VIEW_EMPLOYMENT`) rather than returning conditionally filtered bodies. The directory list carries employment summary columns under `VIEW_PEOPLE` by design.
+
+**Idempotent writes:** create requires `Idempotency-Key`; patch supports it optionally. The **guaranteed retry window** and before/after-window behavior are defined in [section 5](#guaranteed-retry-window-api-contract-and-configuration). Read operations are unaffected.
 
 **Write semantics.** `PATCH` is a JSON merge-patch subset: absent field means unchanged; `null` clears an optional field; `null` on a required field is a validation error; unknown fields are rejected (this also blocks a client-supplied `tenantId`). Every write body may carry an optional `reason` (at most 500 characters) that is stored in the audit entry.
 
@@ -237,7 +256,7 @@ React + TypeScript + Vite. Native semantic controls first; no component library.
 
 Accessibility is Phase 1 scope: landmarks, headings, associated labels, error summary that receives focus, `aria-describedby` on invalid fields, live-region status messages, visible focus, keyboard-operable everything, submit disabled while pending, reduced-motion safe. No dashboard, no metrics cards, no integration or legal screens.
 
-**As built.** Everything above exists. Details worth knowing: the skip link is the first Tab stop on a fresh load, and focus moves to the new page heading only when the person navigates to another page (not on first load, redirects, paging or searching), waiting for the heading if the page is still loading; the error summary takes focus and links to each invalid control; a retry after a lost response reuses the same `Idempotency-Key` while a change of content gets a new one; a `401` from any call (other than the session check itself) returns the person to sign-in with an explanation; the people table scrolls horizontally inside its container on narrow screens (there is no dedicated mobile layout). Messages are in one English catalog (`web/src/i18n/en.ts`); server validation messages are shown as sent, and their stable codes are what a later localization would key on.
+**As built.** Everything above exists. Details worth knowing: the skip link is the first Tab stop on a fresh load, and focus moves to the new page heading only when the person navigates to another page (not on first load, redirects, paging or searching), waiting for the heading if the page is still loading; the error summary takes focus and links to each invalid control; a retry after a lost response reuses the same `Idempotency-Key` while a change of content gets a new one; a `401` from any call (other than the session check itself) returns the person to sign-in with an explanation; at 640px and below the semantic people table becomes compact directory rows retaining name, role, team and status; forms and label/value rows stack. The dedicated UI pass also restores keyboard focus when inline editors open or close and puts revision metadata behind a native disclosure ([UI polish report](UI_PHASE_1_APPLE_POLISH.md)). Messages are in one English catalog (`web/src/i18n/en.ts`); server validation messages are shown as sent, and their stable codes are what a later localization would key on.
 
 ## 11. Synthetic demo data
 
@@ -297,9 +316,9 @@ No coverage-percentage target. Real PostgreSQL wherever transactions, constraint
 - **R3** Embedded PostgreSQL binary versions may differ slightly from the development database version; both are recent major versions, and CI uses the same embedded binaries.
 - **R4** Per-request principal lookup adds one query per API call; acceptable now, measure before caching.
 - **R5** Single-instance in-memory sessions log users out on restart (30-minute idle timeout). Accepted for Phase 1; the reconsider trigger is in ADR-0022.
-- **Q1 (Daniel)** Confirm the provisional choices in ADR-0022: Spring JDBC over JPA, backend OIDC session over browser-held tokens, Maven with packages and ArchUnit instead of Spring Modulith, embedded PostgreSQL for tests while no container runtime is available, row-level security deferred.
-- **Q2 (Daniel)** Confirm `Idempotency-Key` being **required** on create (optional on patch), and 24-hour receipt expiry.
-- **Q3 (Daniel)** Confirm employment `status` and `employmentType` placeholder values (they are software placeholders, not legal classifications).
+- **Q1 (Daniel): ACCEPTED on 2026-09-21.** Spring JDBC over JPA, backend OIDC session over browser-held tokens, Maven with packages and ArchUnit instead of Spring Modulith, embedded PostgreSQL for tests while no container runtime is available, row-level security deferred. This accepts the Q1 scope of ADR-0022 decisions 1, 3, 7, 9 and 10; it does not resolve Q2, Q3, or unrelated ADR decisions.
+- **Q2 (Daniel): ACCEPTED WITH AMENDMENT on 2026-09-21.** `Idempotency-Key` remains required on create and optional on patch. The 24-hour period is a **guaranteed retry window**, not a claim that repeating the action becomes safe afterward. Within it, equivalent same-scoped-key writes replay the prior logical result; materially different payloads conflict. Afterward, original receipt availability is not guaranteed and callers must not assume a retry is equivalent to the original operation. See section 5 for scope, configuration, rationale and exact behavior.
+- **Q3 (Daniel): ACCEPTED on 2026-09-21.** Original question: "Confirm employment `status` and `employmentType` placeholder values (they are software placeholders, not legal classifications)." Accepted values: `PENDING`, `ACTIVE`, `ENDED`; `FULL_TIME`, `PART_TIME`. They support Phase 1 software behavior only, with no claim of complete/legal Costa Rican classifications, statutory calculations, legal eligibility or compliance. Future legal vocabulary and mappings remain research work, separate from the core software vocabulary (section 4; ADR-0022).
 
 ## 17. Findings during implementation and known limitations
 
@@ -319,7 +338,7 @@ No coverage-percentage target. Real PostgreSQL wherever transactions, constraint
 - **Improved in Codex review:** the workspace header, simplified directory columns, and single-column forms reflow at small widths; 320px browser checks pass.
 - Remaining security items: row-level security, rate limiting, and auditing history *reads*. Sessions are in memory. The review added a 64 KiB API write-body cap and prepared dependency/secret workflows; hosted execution/settings remain unverified. See [SECURITY.md](SECURITY.md).
 - The browser suite needs the seeded development database and adds fictional people on each run; it is not self-contained.
-- Employment status and type values are software placeholders, not legal classifications; nothing depends on them legally.
+- Employment status and type values are core software/domain vocabulary, deliberately legally neutral (Q3 accepted): not legal classifications, and nothing depends on them legally.
 
 ## 18. Codex Phase 1 review follow-up
 
@@ -331,7 +350,9 @@ Implementation notes were recorded in the review before changes. No new business
 - Edit forms retain their record/version snapshot across background refresh. Explicit reload replaces the draft; reload failure preserves it.
 - API write bodies have a 64 KiB bound, including unknown length; framework web/security/JDBC logging defaults to INFO; logout uses the framework redirect through a CSRF-protected native form.
 - The compact workspace layout, grouped record rows/timeline, restrained native form controls, dark appearance, and responsive layout are documented in [UI_SYSTEM.md](UI_SYSTEM.md).
-- Required create / optional patch idempotency and 24-hour expiry are unchanged. Replay returns the currently authorized resource represented by the saved reference, not a historical response snapshot. Expiry ends receipt-based retry protection; no perpetual exactly-once guarantee exists.
+- **Q2 follow-up (2026-09-21):** required create / optional patch keys are retained. The period is a guaranteed retry window, default/minimum 24 hours from original write completion, with current-resource replay. Cleanup affects receipt availability, not the safety or meaning of another business action. The implementation enforces the minimum and completes receipts with a full window; no distributed effect machinery was added.
 - CI security and Dependabot configuration is prepared; no hosted workflow/settings verification is claimed.
 
-Final verification: **155 backend (60 unit/architecture, 95 integration), 94 frontend, 15 Chrome E2E**; typecheck, lint, production build pass. npm audit reported zero advisories; Gitleaks source scan found none. No Git history exists in this workspace. Remaining limits and recommendations are in [review sections 18-22](PHASE_1_CODEX_REVIEW.md#18-test-results). Q1-Q3 remain Daniel's decisions; the review recommends ACCEPT / AMEND / ACCEPT respectively.
+Final verification: **155 backend (60 unit/architecture, 95 integration), 94 frontend, 15 Chrome E2E**; typecheck, lint, production build pass. npm audit reported zero advisories; Gitleaks source scan found none. No Git history exists in this workspace. Remaining limits and recommendations are in [review sections 18-22](PHASE_1_CODEX_REVIEW.md#18-test-results). Daniel accepted Q1 and Q3 on 2026-09-21. Q2 is ACCEPTED WITH AMENDMENT on 2026-09-21. The acceptance records and implementation evidence are in ADR-0022.
+
+Q2 verification (2026-09-21): full backend verification passed **164 tests (64 unit/architecture, 100 integration)** with executable-JAR repackaging skipped because the local running application held that file open. Nine added test cases cover minimum/configurable duration, completion-time retention, exact-deadline replay/conflicts/purge, post-window non-equivalence, tenant/operation namespaces and concurrent payload collisions. Existing equal-key races, principal scoping, rollback, fingerprinting and audit tests remain passing. Frontend and E2E results above were not rerun for Q2.

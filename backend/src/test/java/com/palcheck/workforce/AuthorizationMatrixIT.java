@@ -83,7 +83,7 @@ class AuthorizationMatrixIT extends WorkforceIntegrationTest {
 
     @Test
     void rolesAreOnlyBundlesOfPermissions() {
-        assertThat(Role.HR_ADMIN.permissions()).hasSize(7);
+        assertThat(Role.HR_ADMIN.permissions()).hasSize(11);
         assertThat(Role.HR_VIEWER.permissions()).hasSize(3);
     }
 }

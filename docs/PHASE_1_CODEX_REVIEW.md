@@ -1,6 +1,6 @@
 # Phase 1 — Codex engineering and product review
 
-Date: 2026-09-19. Scope: Phase 1 review, polish, and public-repository preparation. **Daniel's acceptance and Q1–Q3 remain open; Phase 2 is not authorized.** All examples, fixtures, and browser data used in this review are synthetic. Legal rules are `NOT IMPLEMENTED`.
+Date: 2026-09-19. Scope: Phase 1 review, polish, and public-repository preparation. **Q1 and Q3 are ACCEPTED by Daniel on 2026-09-21. Q2 is ACCEPTED WITH AMENDMENT on 2026-09-21. The functional Phase 1 foundation is accepted by Daniel; release verification remains separate and Phase 2 is not authorized.** All examples, fixtures, and browser data used in this review are synthetic. Legal rules are `NOT IMPLEMENTED`.
 
 ## 1. Executive assessment
 
@@ -14,7 +14,7 @@ Rendered sign-in, directory, record, edit, and dark-mode screens were inspected 
 
 The five packages (`shared`, `platform`, `access`, `audit`, `workforce`) have understandable responsibilities. Domain rules are independent of Spring and provider types; application services own authorization and transaction boundaries; infrastructure owns SQL; web adapters expose DTOs. ArchUnit checks dependency direction and tenant-bearing repository contracts. Inspection complements those structural checks: a `TenantId` argument alone cannot prove that SQL uses it.
 
-Accepted direction remains intact. No connector, broker, outbox dispatcher, policy execution, or distributed service was added. JDBC is appropriate for this small, explicit relational model. Reconsider abstractions when duplication or operational measurements justify them, not to accumulate technology. ADR-0022 remains subject to Daniel's Q1 confirmation.
+Accepted direction remains intact. No connector, broker, outbox dispatcher, policy execution, or distributed service was added. JDBC is appropriate for this small, explicit relational model. Reconsider abstractions when duplication or operational measurements justify them, not to accumulate technology. Daniel accepted the five Q1 choices on 2026-09-21; ADR-0022 records their scope separately from its remaining decisions.
 
 ## 3. Backend review
 
@@ -28,7 +28,7 @@ Tenant context comes from the authenticated server-side mapping. Directory, reco
 
 Negative tests cover reads and mutations, permissions, cross-tenant foreign keys, and the new folded-search/manager paths. The initial `(issuer, subject)` principal lookup deliberately establishes tenant context; it is not a workforce query. Expired-receipt cleanup is infrastructure maintenance, not a tenant-selectable endpoint.
 
-**RLS recommendation: DEFER for the current synthetic local milestone.** Application enforcement remains mandatory. Before real data, review a non-owner runtime role, per-transaction tenant binding, pool reset behavior, migrations, maintenance access, and failure tests. Adding policies under an owner/superuser connection would give misleading assurance. This preserves Q1 rather than silently accepting it.
+**RLS deferral: ACCEPTED by Daniel through Q1 on 2026-09-21 for Phase 1.** Application enforcement remains mandatory. Before real data, review a non-owner runtime role, per-transaction tenant binding, pool reset behavior, migrations, maintenance access, and failure tests. Adding policies under an owner/superuser connection would give misleading assurance. This implements the accepted deferral; it does not reject RLS permanently.
 
 ## 5. Authentication review
 
@@ -64,9 +64,9 @@ Background query refresh previously could remount a version-keyed form and disca
 
 Receipts are namespaced by tenant, authenticated principal, operation, and key. Fingerprints use parsed, canonical fields with explicit boundaries and distinguish absent/null where relevant. Same-key materially different input produces deterministic 422 rather than an unrelated saved result. Required create keys and optional patch keys retain their existing contract. Unique reservation and business/audit/receipt writes share the transaction; parallel duplicate tests exercise PostgreSQL locking rather than only mocks.
 
-A replay resolves the stored result reference with current authorization and returns the **current resource**, not a frozen historical response body. It does not repeat the mutation. Receipt expiry is 24 hours; this is bounded retry protection, not permanent business-effect uniqueness. After expiry the operation can run again subject to current domain constraints. The UI keeps a retry key for the same form submission, not durable recovery across tab loss.
+A replay resolves the stored result reference with current authorization and returns the **current resource**, not a frozen historical response body. It does not repeat the mutation. Q2 now defines a **guaranteed retry window** of at least 24 hours from original successful write completion. Equivalent same-scoped-key requests replay; materially different payloads conflict during that window. Afterward, the stored receipt/result reference may be unavailable. Normal write rules can reject the request or allow another resource, so callers must not assume a post-window retry is equivalent to the original operation or safe to repeat. The UI keeps a retry key for the same form submission, not durable recovery across tab loss.
 
-Q2 recommends clarifying this contract while retaining the implementation. Future provisioning/event effects need their own stable operation identity under the accepted integration direction; Phase 1 receipts must not be advertised as that solution.
+Daniel **ACCEPTED Q2 WITH AMENDMENT on 2026-09-21**. Two narrow corrections enforce the guarantee: reject configured windows below 24 hours and retain a full window from original write completion. Scope, hashing, response reconstruction and transactional reservations remain. `palcheck.idempotency.ttl` defaults to `PT24H` and can be lengthened; this is a product choice, not a universal distributed-systems rule. See [the API contract](PHASE_1_IMPLEMENTATION_PLAN.md#guaranteed-retry-window-api-contract-and-configuration). Future provisioning/event effects need their own stable operation identity under the accepted integration direction; Phase 1 receipts must not be advertised as that solution.
 
 ## 10. Database review
 
@@ -110,7 +110,7 @@ This is **SOFTWARE BEHAVIOR** for finding names, not an identity-matching or leg
 |---|---|---|
 | Request size | **IMPLEMENT NOW** | 64 KiB cap on POST/PUT/PATCH `/api/` bodies; fixed neutral 413, including unknown/chunked length. Appropriate for the small JSON contract; no upload endpoint exists |
 | Rate limiting | **NEXT SECURITY MILESTONE** | Before an internet-accessible demo: choose reverse-proxy and authenticated-tenant limits with trusted proxy identity, IdP protection, and observable failure behavior. An in-memory counter here would not solve deployment abuse |
-| RLS | **DEFER** | Keep application isolation; assess runtime DB privileges and transaction binding before real-data use, subject to Q1 |
+| RLS | **DEFER** | Keep application isolation; assess runtime DB privileges and transaction binding before real-data use; Phase 1 deferral accepted through Q1 on 2026-09-21 |
 | Production data controls | **PRE-PRODUCTION ONLY** | Retention/erasure research, backup/restore, encryption decisions, least-privilege operational roles, and deployment/session design need their own acceptance evidence |
 
 The logging canary found a real configuration weakness with synthetic data, not evidence of a real-data leak. Spring web/security/JDBC log levels now explicitly default to INFO even under generic DEBUG activation. Do not enable HTTP-body or SQL-parameter debug logging with real data; operators can override configuration and infrastructure/database logs need separate controls.
@@ -150,6 +150,8 @@ New backend coverage: two bounded-body tests, two search/manager integration tes
 
 Existing tests continue to cover meaningful negative behavior: foreign reads/mutations, forbidden writes, audit rollback, parallel same-key/same-version requests, mismatched idempotency payloads, real sign-out, and actual stale-tab conflict. The baseline logging failure and reproduced graph race were fixed, not hidden by removing assertions. A Windows clean-build file lock was resolved by stopping the review's running backend before `clean`; it was an environment issue, not a source failure.
 
+**Q2 follow-up verification (2026-09-21):** the complete backend suite now passes **164 tests (64 unit/architecture + 100 integration)**, zero failures/errors/skips. `mvnw.cmd -B -ntp -Dspring-boot.repackage.skip=true verify` ran all backend tests; repackaging was skipped because the existing local application held the executable JAR open on Windows. New configuration tests first reproduced acceptance of sub-24-hour values; the clock-controlled completion test first reproduced loss of the promised full window. Both pass after correction. An initial mocked-clock setup omitted UTC conversion and was corrected before assessing the regression. No frontend/E2E rerun was needed for the backend-only contract change; their earlier results above remain dated evidence.
+
 ## 19. Fixes made
 
 - Preserved draft/version snapshots through background refresh and made conflict reload explicit and recoverable.
@@ -164,22 +166,24 @@ Existing tests continue to cover meaningful negative behavior: foreign reads/mut
 
 Docker Compose and GitHub build/E2E/security workflows have not run. Human screen-reader testing and other browser engines remain outstanding. RLS, rate limiting, audit-of-history-read events, persistent/shared sessions, and production privacy/operations controls are absent. Search/deep paging and graph-lock contention lack representative scale measurements. A full Java advisory scan and dependency-license inventory are not completed.
 
-The E2E suite expects seeded services and adds synthetic records per run. The 24-hour idempotency receipt is not permanent deduplication. Employment vocabulary is provisional software language, not a legal classification. Extension availability/schema/privileges must be checked in each deployment. No real data, internet deployment, or legal functionality is approved by these results.
+The E2E suite expects seeded services and adds synthetic records per run. The 24-hour guaranteed retry window concerns receipt availability; after it, the original effect can remain without its receipt and repetition is not known to be safe. Employment vocabulary is accepted as software/domain placeholders, not complete or legally authoritative Costa Rican classifications; legal vocabulary and mappings remain separate research. Extension availability/schema/privileges must be checked in each deployment. No real data, internet deployment, or legal functionality is approved by these results.
 
-## 21. Q1–Q3 recommendations
+## 21. Q1, Q2 and Q3 resolutions
 
-These reproduce the proposals from plan section 16. Classifications below are **Codex recommendations, not Daniel's approval**.
+These record Daniel's resolutions of plan section 16. **Daniel accepted Q1 and Q3 on 2026-09-21.** **Daniel accepted Q2 WITH AMENDMENT on 2026-09-21.** Each acceptance is limited to its recorded scope in ADR-0022.
 
-| Question / current proposal | Recommendation | Reasoning and tradeoffs |
+| Question | Owner resolution | Reasoning and tradeoffs |
 |---|---|---|
-| **Q1:** confirm ADR-0022's Spring JDBC over JPA; backend OIDC session over browser-held tokens; Maven packages + ArchUnit instead of Modulith; embedded PostgreSQL while no container runtime exists; RLS deferred | **ACCEPT** | Explicit queries and package checks fit this monolith; server sessions simplify browser token handling; real embedded PostgreSQL tests transactions without Docker. Costs are handwritten SQL, session operational constraints, container-parity validation still due, and tenant isolation without a DB policy backstop. Revisit at concrete scaling/deployment triggers |
-| **Q2:** require `Idempotency-Key` on create, optional on patch, with 24-hour expiry | **AMEND** | Retain mechanics but explicitly accept bounded retry lifetime and current-resource replay semantics. Require clients to treat expiry as loss of the receipt guarantee; document that future durable business-effect deduplication is separate. Longer retention improves retry coverage but adds storage/cleanup and does not replace stable business identity. No lifetime or API requirement was silently changed |
-| **Q3:** confirm placeholder employment status/type values | **ACCEPT** | `PENDING`, `ACTIVE`, `ENDED`; `FULL_TIME`, `PART_TIME` are useful synthetic software vocabulary. They carry no statutory eligibility or calculation behavior. They may need migration when researched domain requirements mature; no legal meaning is inferred |
+| **Q1:** confirm ADR-0022's Spring JDBC over JPA; backend OIDC session over browser-held tokens; Maven packages + ArchUnit instead of Modulith; embedded PostgreSQL while no container runtime exists; RLS deferred | **ACCEPTED by Daniel, 2026-09-21** | Explicit queries and package checks fit this monolith; server sessions simplify browser token handling; real embedded PostgreSQL tests transactions without Docker. Costs are handwritten SQL, session operational constraints, container-parity validation still due, and tenant isolation without a DB policy backstop. Revisit at concrete scaling/deployment triggers |
+| **Q2:** required create key, optional patch key; 24-hour **guaranteed retry window** | **ACCEPTED WITH AMENDMENT by Daniel, 2026-09-21** | Guarantee same-scope equivalent retries and deterministic payload conflicts during the window. Afterward receipt availability is not guaranteed, not proof of safe repetition. Configuration stays adjustable; minimum and completion-time retention are enforced. Current-resource replay and future durable effect identity remain distinct |
+| **Q3:** confirm placeholder employment status/type values | **ACCEPTED by Daniel, 2026-09-21** | `PENDING`, `ACTIVE`, `ENDED`; `FULL_TIME`, `PART_TIME` support Phase 1 software behavior only. They are not complete/legal Costa Rican classifications and must not imply statutory calculations, legal eligibility or compliance. Future researched local classifications, mappings, metadata and terminology stay conceptually separate from the core vocabulary |
 
 ## 22. Phase 1 completion recommendation
 
+**Owner follow-up:** Daniel accepted the functional Phase 1 foundation in the dedicated UI-polish brief. [UI_PHASE_1_APPLE_POLISH.md](UI_PHASE_1_APPLE_POLISH.md) records the subsequent presentation work and its own test evidence. The original recommendation below remains review history; deployment and outstanding verification are separate.
+
 **Recommend accepting the functional local Phase 1 foundation, with the verification limits recorded above.** This is ready for Daniel's product/engineering acceptance, not production certification. Public-source preparation is substantially stronger, but publication itself, licensing, hosted security configuration, and first CI runs remain owner/release actions.
 
-The consensus is to preserve Claude's foundation and the Codex corrections, then close evidence gaps before adding features. The smallest next milestone is **Phase 1 acceptance and publication validation**: Daniel resolves Q1–Q3; run Compose and GitHub checks in an appropriate environment; verify Java dependency coverage and hosted settings; perform human screen-reader and another-browser checks; fix only failures found by those checks. If a public hosted demo is planned, authorize the rate-limit/deployment security milestone before exposure. Do not open Phase 2 implicitly.
+The consensus is to preserve Claude's foundation and the Codex corrections, then close evidence gaps before adding features. The smallest next milestone is **Phase 1 acceptance and publication validation**: Q1, amended Q2 and Q3 are resolved; run Compose and GitHub checks in an appropriate environment; verify Java dependency coverage and hosted settings; perform human screen-reader and another-browser checks; fix only failures found by those checks. If a public hosted demo is planned, authorize the rate-limit/deployment security milestone before exposure. Do not open Phase 2 implicitly.
 
 [Review handoff and next-prompt scope](PHASE_1_REVIEW_HANDOFF.md) collects this boundary for the next engineer.

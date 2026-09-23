@@ -1,9 +1,9 @@
 # ADR-0013: Authentication
 
-**Status:** Proposed
+**Status:** Accepted in part (Daniel Aguilar, Q1, 2026-09-21): the Phase 1 backend OIDC session choice is accepted; other proposals retain their prior status.
 **Date:** 2026-09-19
 
-> **Implementation note (2026-09-19):** Phase 1 implements login as OpenID Connect authorization code with a **backend-managed session** rather than a bearer-token resource server, provisionally, per [ADR-0020](0020-foundation-first-delivery-plan.md) decisions 5 and 6 and [ADR-0022](0022-phase1-technical-baseline.md) decision 7. The identity-provider choice stays deferred (Keycloak is the development provider only). Original reasoning below is retained.
+> **Implementation note (2026-09-19):** Phase 1 implements login as OpenID Connect authorization code with a **backend-managed session** rather than a bearer-token resource server, **accepted by Daniel through Q1 on 2026-09-21**, per [ADR-0020](0020-foundation-first-delivery-plan.md) decisions 5 and 6 and [ADR-0022](0022-phase1-technical-baseline.md) decision 7. The identity-provider choice stays deferred (Keycloak is the development provider only). Original reasoning below is retained.
 
 ## Context
 
@@ -12,13 +12,13 @@ Real overlay customers will probably want single sign-on with their own corporat
 
 ## Decision
 
-1. **The API is an OIDC resource server**: it validates tokens from a configured issuer, maps claims to a principal and a tenant, and never stores passwords.
+1. **Phase 1 uses OIDC authorization-code login with a backend-managed session (Q1 ACCEPTED, 2026-09-21).** It maps the authenticated identity to a principal and tenant and never stores passwords. This amends the original resource-server-only proposal; bearer-token resource-server support is deferred until a non-browser client exists ([ADR-0022](0022-phase1-technical-baseline.md), decision 7).
 2. **The identity provider is deferred.** Phase 1 uses a **local development provider** in the local environment. The pattern is decided; the product is not. Candidates to evaluate later (*Unverified*, status at decision time): an open-source self-hosted provider, Spring Authorization Server, or a managed service.
 3. **Tenant resolution** comes from a verified claim or a trusted mapping in `access`, never from client-supplied headers or body fields.
 4. **MFA** for privileged roles is enforced at the identity provider.
 5. **Service accounts** for connectors are secret *references*, least-privileged, rotatable, and never shared between tenants.
 6. **Short-lived tokens; revocation and logout behavior documented** when the provider is chosen.
-7. **Browser session model** (SPA-held tokens with Authorization Code + PKCE vs. a same-origin session mediated by the backend) is **open** and decided with [ADR-0009](0009-frontend-architecture.md) (SQ-03 in [SECURITY.md](../SECURITY.md)).
+7. **Browser session model: ACCEPTED through Q1 on 2026-09-21.** Use the same-origin backend OIDC session, not SPA-held OAuth tokens, with CSRF protection. This resolves SQ-03 in [SECURITY.md](../SECURITY.md) and the browser choice in [ADR-0009](0009-frontend-architecture.md).
 8. **Enterprise SSO** (per-tenant federation to a customer's identity provider) is recorded as a likely requirement for overlay customers, not designed now.
 
 ## Alternatives Considered
@@ -48,11 +48,11 @@ Real overlay customers will probably want single sign-on with their own corporat
 
 - A customer requires SAML or a specific federation model.
 - The chosen provider cannot express tenant mapping cleanly.
-- Frontend session analysis favors the backend-mediated model over SPA-held tokens (adjust, do not abandon OIDC).
+- A non-browser bearer client or session scaling/persistence requirement warrants revisiting the accepted backend-session design (retain OIDC).
 
 ## Interview line
 
-"PalCheck never handles passwords: it's an OIDC resource server that maps a verified token to a principal and tenant, and the identity provider is a swappable choice I've deliberately deferred."
+"PalCheck never handles passwords: it uses OIDC login and a backend-held browser session mapped to a principal and tenant, and the identity provider is a swappable choice I've deliberately deferred."
 
 ## Related Decisions
 

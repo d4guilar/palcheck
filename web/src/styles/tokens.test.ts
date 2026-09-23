@@ -42,6 +42,9 @@ const pairs: Array<[string, string, number, string]> = [
   ['color-text', 'color-bg', 4.5, 'body text'],
   ['color-text', 'color-surface', 4.5, 'body text on surfaces'],
   ['color-text', 'color-bg-subtle', 4.5, 'body text on subtle backgrounds'],
+  ['color-text', 'color-selected', 4.5, 'selected navigation'],
+  ['color-text', 'color-elevated', 4.5, 'elevated controls'],
+  ['color-text-muted', 'color-elevated', 4.5, 'elevated control hints'],
   ['color-text-secondary', 'color-surface', 4.5, 'secondary text'],
   ['color-text-secondary', 'color-bg-subtle', 4.5, 'secondary text on subtle backgrounds'],
   ['color-text-muted', 'color-surface', 4.5, 'muted text'],
@@ -60,6 +63,8 @@ const pairs: Array<[string, string, number, string]> = [
   ['color-neutral-text', 'color-neutral-bg', 4.5, 'neutral tag and notice'],
   // Non-text contrast: form control boundaries and the focus ring must be perceivable.
   ['color-border-strong', 'color-surface', 3, 'form control boundary'],
+  ['color-border-strong', 'color-bg-subtle', 3, 'search control boundary'],
+  ['color-border-strong', 'color-elevated', 3, 'focused control boundary'],
   ['color-focus', 'color-bg', 3, 'focus ring on the page'],
   ['color-focus', 'color-surface', 3, 'focus ring on surfaces'],
 ]

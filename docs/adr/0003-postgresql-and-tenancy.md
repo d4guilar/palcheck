@@ -1,9 +1,9 @@
 # ADR-0003: PostgreSQL and Tenant Isolation
 
-**Status:** Proposed
+**Status:** Accepted in part (Daniel Aguilar, Q1, 2026-09-21): Phase 1 RLS deferral is accepted; other proposals retain their prior status.
 **Date:** 2026-09-19
 
-> **Implementation note (2026-09-19):** Phase 1 enforces tenant isolation in the application (every repository method takes a `TenantId`, checked by ArchUnit), with tenant-qualified composite foreign keys and negative tests on every endpoint. **Row-level security was deferred, not spiked** ([ADR-0022](0022-phase1-technical-baseline.md) decision 9). Original reasoning below is retained.
+> **Implementation note (2026-09-19):** Phase 1 enforces tenant isolation in the application (every repository method takes a `TenantId`, checked by ArchUnit), with tenant-qualified composite foreign keys and negative tests on every endpoint. **Row-level security is deferred, not spiked; Daniel accepted this Phase 1 choice through Q1 on 2026-09-21** ([ADR-0022](0022-phase1-technical-baseline.md) decision 9). Original reasoning below is retained.
 
 ## Context
 
@@ -14,7 +14,7 @@ The brief chose PostgreSQL for the stack but did not decide **multi-tenancy**, w
 
 1. **PostgreSQL** is the single system of record: one database, **one schema per module** ([ADR-0001](0001-modular-monolith.md)), Flyway migrations owned by each module.
 2. **Pooled multi-tenancy**: all tenants share tables; **every tenant-owned table carries `tenant_id`**, and every repository method requires a tenant. Tenant comes from the authenticated principal at the edge, never from client input.
-3. **Row-level security (RLS)** as a *backstop*, not the only control: **spike in Phase 1** and adopt if the cost (session-variable plumbing, connection-pool interaction, migration complexity, query plans) is justified.
+3. **Row-level security (RLS)** as a *backstop*, not the only control: **deferred for Phase 1, accepted through Q1 on 2026-09-21** ([ADR-0022](0022-phase1-technical-baseline.md), decision 9). This amends the original Phase 0 proposal to spike it in Phase 1. Before real customer data, revisit runtime roles, tenant binding, pool reuse, migrations and query plans; application isolation remains required.
 4. **Automated cross-tenant negative tests** for every endpoint are mandatory from the first endpoint.
 5. **Global reference data** (Legal Concept Registry projection) has no `tenant_id` and is read-only at runtime.
 6. Effective-dated history uses a pattern chosen by spike (open question OQ-03 in [DOMAIN_MODEL.md](../DOMAIN_MODEL.md)); PostgreSQL range types with exclusion constraints are a leading candidate for preventing overlapping ranges. *Unverified until spiked.*
@@ -60,7 +60,7 @@ and offers a realistic path to production hosting.
 
 ## Interview line
 
-"Relational, transactional, constraint-heavy data, so PostgreSQL; pooled tenancy with a required tenant on every query, tests that try to cross tenants on every endpoint, and row-level security as a backstop if the spike says it's worth it."
+"Relational, transactional, constraint-heavy data, so PostgreSQL; pooled tenancy with a required tenant on every query, tests that try to cross tenants on every endpoint, and an explicitly accepted Phase 1 RLS deferral with a review trigger before real customer data."
 
 ## Related Decisions
 

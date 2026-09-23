@@ -1,11 +1,47 @@
 # ADR-0022: Phase 1 Technical Baseline
 
-**Status:** Proposed (implemented provisionally by Phase 1 under Daniel's direction; explicit confirmation requested)
+**Status:** Accepted in part (Daniel Aguilar, 2026-09-21): Q1 choices in decisions 1, 3, 7, 9 and 10 are ACCEPTED; decision 6 is ACCEPTED WITH AMENDMENT through Q2; Q3 software/domain placeholder vocabulary is ACCEPTED as recorded below; remaining choices retain their prior status.
 **Date:** 2026-09-19
+
+## Q1 acceptance record (2026-09-21)
+
+Daniel explicitly accepted Q1 as written in [the implementation plan](../PHASE_1_IMPLEMENTATION_PLAN.md#16-risks-and-open-questions): **Spring JDBC over JPA, backend OIDC session over browser-held tokens, Maven with packages and ArchUnit instead of Spring Modulith, embedded PostgreSQL for tests while no container runtime is available, row-level security deferred.**
+
+| Decision / Q1 scope | Status | Implementation checked on 2026-09-21 |
+|---|---|---|
+| 1: Maven, ordinary packages and ArchUnit; no Spring Modulith | **ACCEPTED** | `backend/pom.xml`, Maven wrapper, package layout and `ArchitectureTest` |
+| 3: Spring JDBC over JPA | **ACCEPTED** | JDBC dependency and `JdbcClient` repositories with explicit tenant predicates; no JPA dependency |
+| 7: backend OIDC session over browser-held tokens | **ACCEPTED** | `SecurityConfig.oauth2Login`, CSRF/session handling and the same-origin Vite proxy; existing `OidcLoginFlowIT` |
+| 9: defer RLS for Phase 1 | **ACCEPTED** | Migrations contain no RLS policies; tenant-scoped repositories, composite foreign keys, `TenantIsolationIT` and `WorkforceSchemaIT` provide application/constraint enforcement |
+| 10: embedded PostgreSQL tests while no container runtime is available | **ACCEPTED** | `io.zonky.test:embedded-postgres` and shared `TestPostgres` support start real PostgreSQL; no H2 or Testcontainers dependency |
+
+Acceptance changes decision status, not runtime behavior. No implementation or test changes are required. The container-runtime condition and reconsideration triggers remain; RLS is deferred, not permanently rejected. The backend session choice keeps OAuth tokens out of application JavaScript; standard provider logout still uses a browser redirect with an ID-token hint.
+
+**Scope boundary:** Q1 did not accept decision 6; Daniel separately accepted it WITH AMENDMENT through Q2 on 2026-09-21 as recorded below. Employment vocabulary is separately accepted through Q3 below. Decisions 2, 4, 5, 8, 11 and 12 and ancillary provider/tool details are not newly accepted by these resolutions; any earlier accepted constraints they reference still apply. Q1 also does not accept ADR-0018's unrelated provisional decisions, ADR-0020's remaining preconditions/local-environment details, or ADR-0023. Phase 1 completion and Phase 2 authorization remain separate.
+
+## Q2 acceptance with amendment (2026-09-21)
+
+**Decision 6: ACCEPTED WITH AMENDMENT by Daniel.** Required-on-create and optional-on-patch keys retain their current tenant + principal + operation namespace. The 24-hour period is a **guaranteed retry window**. During that window, equivalent requests replay the same logical result without another mutation; materially different payloads under the same scoped key return 422 IDEMPOTENCY_CONFLICT. Current-resource reconstruction and current authorization remain the response contract.
+
+After the window, original receipt availability is no longer guaranteed. Removing a receipt does not remove the original business effect, prove it never occurred, or make a repeat safe/equivalent. Clients must reconcile uncertain outcomes before another business action. No permanent deduplication or distributed idempotency platform is implied.
+
+The 24-hour default is a product tradeoff: predictable next-day recovery from interruptions versus bounded receipt storage. It is not a general distributed-systems rule. `palcheck.idempotency.ttl` remains the compatible setting, documented in application.yml and [the API contract](../PHASE_1_IMPLEMENTATION_PLAN.md#guaranteed-retry-window-api-contract-and-configuration). It can be lengthened without schema changes; startup rejects values below the accepted 24-hour minimum. Stored `expires_at` values remain authoritative for existing receipts when configuration changes.
+
+**Implementation correction:** complete the original receipt with a full window from write completion, rather than spending the window while the write executes; reject configuration below 24 hours. Replays never reset the deadline. Database column/index names describe retention accurately and are retained; the Java duration is named `guaranteedRetryWindow`. Existing migration V5 is immutable and unchanged. Real-PostgreSQL clock-controlled tests cover the deadline, post-window non-equivalence, completion delay, namespaces, collisions and duplicate races. Q3 is a separate acceptance below; Phase 2 remains unauthorized.
+
+## Q3 acceptance record (2026-09-21)
+
+**ACCEPTED by Daniel.** The plan's exact question was: "Confirm employment `status` and `employmentType` placeholder values (they are software placeholders, not legal classifications)." The existing values are `PENDING`, `ACTIVE`, `ENDED` for status and `FULL_TIME`, `PART_TIME` for employment type.
+
+These are **SOFTWARE / DOMAIN PLACEHOLDERS** supporting Phase 1 workforce behavior. They are not complete or legally authoritative Costa Rican employment categories, must not drive statutory calculations, and imply no legal eligibility or compliance. Core software vocabulary and country-specific legal vocabulary remain separate. Future verified research may require richer local classifications, mappings, additional metadata, country-policy concepts or different terminology; no legal equivalence is inferred and no replacement taxonomy is invented now.
+
+**Why this choice:** keep a small, usable record lifecycle and classification while legal research remains unverified. Treating these labels as legal categories would assert unsupported meaning; removing them would remove useful Phase 1 software behavior. The tradeoff is that future researched requirements may need explicit mapping or a deliberate migration. Revisit WC-1/WC-4, working-time and termination research during authorized Costa Rica policy work. No new runtime component or operational burden is introduced.
+
+**Implementation checked:** Java enums, EmploymentData validation, database constraints, API parsing/serialization, TypeScript types, creation/editing forms, directory/status tags and history labels use the same values. `ENDED` requiring an end date is a software integrity rule. No statutory calculation, eligibility or compliance behavior is attached. Values, schema and business logic are unchanged; enum/type comments, API/domain/localization documentation and the existing employment-type form hint clarify the boundary. Existing creation/editing tests now verify the hint is accessible to the corresponding control. Legal research status and unrelated ADR decisions remain unchanged.
 
 ## Context
 
-Daniel opened Phase 1 (authenticated workforce foundation) and asked Claude to decide, before implementing, whether Spring Modulith is worthwhile, whether an accepted ADR already chose an identity approach, and how to build a small, defensible vertical slice. ADR-0020 decisions 4 to 7 (Maven and packages with ArchUnit, Spring JDBC, backend OIDC session, local PostgreSQL plus a development identity provider) are provisional, and ADR-0003 leaves row-level security as a spike. No accepted ADR fixes these. The development machine has JDK 17, Node 24, PostgreSQL 17 as a local service, but **no container runtime** (Docker was not found), which affects the test-database and identity-provider choices.
+Daniel opened Phase 1 (authenticated workforce foundation) and asked Claude to decide, before implementing, whether Spring Modulith is worthwhile, whether an accepted ADR already chose an identity approach, and how to build a small, defensible vertical slice. At the original decision date, ADR-0020 decisions 4 to 7 and ADR-0003's RLS spike left these choices unresolved. The Q1 acceptance record above now settles Maven/packages/ArchUnit, JDBC, backend OIDC sessions, embedded PostgreSQL testing and RLS deferral. Local-environment details outside Q1 retain their earlier status. The development machine has JDK 17, Node 24, PostgreSQL 17 as a local service, but **no container runtime** (Docker was not found), which affects the test-database and identity-provider choices.
 
 ## Decision
 
@@ -14,7 +50,7 @@ Daniel opened Phase 1 (authenticated workforce foundation) and asked Claude to d
 3. **Persistence.** Spring JDBC (`JdbcClient`) with explicit SQL repositories; no JPA. Rationale: every statement must show its tenant filter and version guard, audit must join the same transaction visibly, temporal and constraint-heavy SQL stays readable, and there are no lazy-loading or proxy surprises. Cost: hand-written mapping.
 4. **Validation.** Field rules live in the domain (one implementation shared by create and patch) and produce `FieldViolation`s; Bean Validation is not used for field rules.
 5. **Concurrency and history.** Per-row `version` with `expectedVersion` in the request body (`409 CONFLICT`); current-state tables authoritative; append-only `audit_entry` written by an `AuditRecorder` that requires an existing transaction; assignment carries effective dates so job changes can later close and open rows, but Phase 1 edits it in place.
-6. **Command idempotency.** `Idempotency-Key` receipts in a technical `platform.idempotency_record` table, reserved inside the business transaction (concurrency-safe by unique index), scoped to tenant + principal + operation + key, with 24-hour expiry. Required on create, optional on patch. This is **command idempotency only**; business-operation identity for downstream effects (ADR-0019 decision 3) is accepted but not built.
+6. **Command idempotency.** `Idempotency-Key` receipts in a technical `platform.idempotency_record` table, reserved inside the business transaction (concurrency-safe by unique index), scoped to tenant + principal + operation + key, with a **guaranteed retry window** of at least 24 hours from original write completion (Q2 ACCEPTED WITH AMENDMENT). Receipt availability after that window is not guaranteed and does not establish safe/equivalent repetition. Required on create, optional on patch. This is **command idempotency only**; business-operation identity for downstream effects (ADR-0019 decision 3) is accepted but not built.
 7. **Authentication.** Spring Security `oauth2Login` with a same-origin, backend-managed session and CSRF protection; no browser-held tokens. The identity provider is Keycloak in development, behind standard OIDC configuration. Tenant and roles come from a trusted server-side `principal` mapping on `(issuer, subject)`, never from the request. Resource-server (bearer) support is not configured until a non-browser client exists.
 8. **Authorization.** Permission checks in application services against an `Actor` that only `access` constructs; roles are code-defined bundles of permissions; tenant-wide scope only, with the scope carried in the type so narrower scopes extend it.
 9. **Tenant isolation.** Application-level enforcement plus tenant-qualified composite foreign keys plus negative tests on every endpoint. **Row-level security is deferred**, not rejected.
@@ -58,7 +94,7 @@ Every decision above was implemented as written. What building and testing it sh
 - **Decision 12 (logging).** ECS JSON is the default; the `dev` and `test` profiles switch to readable text. Observed on a running instance: `requestId`, `correlationId`, `tenantId`, `userId`, `operation` and `result` as fields, route templates instead of paths, and no tokens, cookies or names.
 - **Not adopted, as planned:** Spring Modulith, JPA, Bean Validation for field rules, Testcontainers, row-level security.
 - **Still unverified:** `docker-compose.yml` and the GitHub workflows, because no container runtime or CI run was available. Everything they run was run locally. This changes nothing in the decision; it is a verification gap, tracked in the plan (R2).
-- **Awaiting Daniel:** explicit confirmation of decisions 3, 7, 9 and 10 (plan questions Q1 to Q3). Status stays Proposed until then.
+- **Owner resolution (2026-09-21):** Q1 choices in decisions 1, 3, 7, 9 and 10 are ACCEPTED. Q2 is ACCEPTED WITH AMENDMENT; Q3 is ACCEPTED as software/domain placeholders. See the separate scoped acceptance records above.
 
 ## Interview line
 

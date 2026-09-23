@@ -1,3 +1,4 @@
+import { SourceDetails } from '../integrations/SourceDetails'
 import { ManagerPicker } from '../../components/ManagerPicker'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -9,6 +10,7 @@ import { StatusTag } from '../../components/StatusTag'
 import { FormFeedback } from '../../forms/FormFeedback'
 import { fieldId } from '../../forms/failure'
 import { useSaveForm } from '../../forms/useSaveForm'
+import { useEditorFocus } from '../../forms/useEditorFocus'
 import { useT } from '../../i18n/useT'
 import { useFormat } from '../../lib/format'
 
@@ -23,6 +25,7 @@ export function EmploymentCard({ employment, canEdit, onSaved }: Props) {
   const t = useT()
   const format = useFormat()
   const [editing, setEditing] = useState<{ kind: 'employment' | 'assignment'; record: Employment } | null>(null)
+  const editorRegion = useEditorFocus(editing?.kind ?? null, editing ? fieldId(editing.kind, editing.kind === 'employment' ? 'status' : 'title') : null)
   const queryClient = useQueryClient()
   const reload = async () => {
     const latest = await api.employments(employment.personId)
@@ -40,7 +43,7 @@ export function EmploymentCard({ employment, canEdit, onSaved }: Props) {
   }
 
   return (
-    <article className="card" aria-labelledby={headingId}>
+    <article ref={editorRegion} className="employment-record" aria-labelledby={headingId}>
       <div className="card__header">
         <h3 id={headingId}>
           {t('person.employment.legalEntity', {
@@ -48,20 +51,18 @@ export function EmploymentCard({ employment, canEdit, onSaved }: Props) {
             country: employment.legalEntity.country,
           })}
         </h3>
-        <StatusTag status={employment.status} />
-      </div>
-
-      <div role="group" aria-labelledby={`${headingId}-terms`}>
-        <div className="card__header" style={{ marginBottom: 'var(--space-3)' }}>
-          <h4 id={`${headingId}-terms`} style={{ margin: 0 }}>
-            {t('person.section.employment')}
-          </h4>
-          {canEdit && !editing ? (
-            <button type="button" className="btn btn--quiet" onClick={() => setEditing({ kind: 'employment', record: employment })} aria-label={t('person.edit.employment')}>
+        <div className="cluster employment-actions">
+          <StatusTag status={employment.status} />
+          {canEdit && !employment.ownedBySystem && !editing ? (
+            <button type="button" data-edit="employment" className="btn btn--quiet" onClick={() => setEditing({ kind: 'employment', record: employment })} aria-label={t('person.edit.employment')}>
               {t('action.edit')}
             </button>
           ) : null}
         </div>
+      </div>
+
+      <div role="group" aria-label={t('person.section.employment')}>
+        <SourceDetails employment={employment} />
         {editing?.kind === 'employment' ? (
           <EmploymentForm key={editing.record.version} employment={editing.record} onReload={reload} onCancel={() => setEditing(null)} onSaved={done} />
         ) : (
@@ -84,9 +85,10 @@ export function EmploymentCard({ employment, canEdit, onSaved }: Props) {
                 <dd>{employment.endDate ? format.date(employment.endDate) : <span className="muted">{none}</span>}</dd>
               </div>
             </dl>
-            <p className="small muted" style={{ marginTop: 'var(--space-3)' }}>
-              {t('person.revision', { version: employment.version })}
-            </p>
+            <details className="record-metadata">
+              <summary>{t('person.recordDetails')}</summary>
+              <p>{t('person.revision', { version: employment.version })}</p>
+            </details>
           </>
         )}
       </div>
@@ -98,12 +100,13 @@ export function EmploymentCard({ employment, canEdit, onSaved }: Props) {
           <h4 id={`${headingId}-assignment`} style={{ margin: 0 }}>
             {t('person.section.assignment')}
           </h4>
-          {canEdit && assignment && !editing ? (
-            <button type="button" className="btn btn--quiet" onClick={() => setEditing({ kind: 'assignment', record: employment })} aria-label={t('person.edit.assignment')}>
+          {canEdit && assignment && !assignment.ownedBySystem && !editing ? (
+            <button type="button" data-edit="assignment" className="btn btn--quiet" onClick={() => setEditing({ kind: 'assignment', record: employment })} aria-label={t('person.edit.assignment')}>
               {t('action.edit')}
             </button>
           ) : null}
         </div>
+        <SourceDetails employment={employment} assignment />
         {!assignment ? (
           <p className="muted">{t('person.assignment.none')}</p>
         ) : editing?.kind === 'assignment' ? (
@@ -136,10 +139,13 @@ export function EmploymentCard({ employment, canEdit, onSaved }: Props) {
                 </dd>
               </div>
             </dl>
-            <p className="small muted" style={{ marginTop: 'var(--space-3)' }}>
-              {t('person.assignment.effectiveFrom', { date: format.date(assignment.effectiveFrom) })} ·{' '}
-              {t('person.revision', { version: assignment.version })}
+            <p className="small muted record-effective-date">
+              {t('person.assignment.effectiveFrom', { date: format.date(assignment.effectiveFrom) })}
             </p>
+            <details className="record-metadata">
+              <summary>{t('person.recordDetails')}</summary>
+              <p>{t('person.revision', { version: assignment.version })}</p>
+            </details>
           </>
         )}
       </div>

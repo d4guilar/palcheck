@@ -1,23 +1,6 @@
-import { createRequire } from 'node:module'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { signIn, signInAs, users } from './support'
-
-const require = createRequire(import.meta.url)
-const axePath = require.resolve('axe-core/axe.min.js')
-
-/** Runs axe-core inside the real page (so color contrast and focus styles are measured, which jsdom cannot do). */
-export async function expectNoAxeViolations(page: Page, label: string) {
-  await page.addScriptTag({ path: axePath })
-  const violations = await page.evaluate(async () => {
-    const axe = (window as unknown as { axe: { run: (context: Document, options: object) => Promise<{ violations: unknown[] }> } }).axe
-    const result = await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } })
-    return result.violations.map((v) => {
-      const violation = v as { id: string; help: string; nodes: { target: unknown[] }[] }
-      return { id: violation.id, help: violation.help, targets: violation.nodes.map((n) => n.target.join(' ')) }
-    })
-  })
-  expect(violations, `${label}: ${JSON.stringify(violations, null, 2)}`).toEqual([])
-}
+import { expectNoAxeViolations } from './axe'
 
 test.describe('Accessibility in a real browser', () => {
   test('the main screens have no detectable WCAG 2.2 AA violations, including color contrast', async ({ page }) => {
@@ -37,6 +20,7 @@ test.describe('Accessibility in a real browser', () => {
     await expectNoAxeViolations(page, 'new person with validation errors')
 
     await page.goto('/people')
+    await page.getByLabel('Search people').fill('Solis')
     await page.getByRole('link', { name: 'Mariana Solís Vega' }).click()
     await expect(page.getByRole('region', { name: 'Change history' })).toBeVisible()
     await expectNoAxeViolations(page, 'person detail')
@@ -54,6 +38,7 @@ test.describe('Accessibility in a real browser', () => {
     await expect(page.getByRole('table')).toBeVisible()
     await expectNoAxeViolations(page, 'people list (dark)')
 
+    await page.getByLabel('Search people').fill('Solis')
     await page.getByRole('link', { name: 'Mariana Solís Vega' }).click()
     await expect(page.getByRole('region', { name: 'Change history' })).toBeVisible()
     await page.getByRole('button', { name: 'Edit identity' }).click()
@@ -85,6 +70,8 @@ test.describe('Accessibility in a real browser', () => {
     // Wait for the search to narrow the list (header row plus the one match) before tabbing into it.
     await expect(page.getByRole('table').getByRole('row')).toHaveCount(2)
     await page.keyboard.press('Tab')
+    await expect(page.getByRole('link', { name: 'New person', exact: true })).toBeFocused()
+    await page.keyboard.press('Tab')
     await expect(page.getByRole('link', { name: 'Mariana Solís Vega' })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('heading', { level: 1, name: 'Mariana Solís Vega' })).toBeVisible()
@@ -95,10 +82,10 @@ test.describe('Accessibility in a real browser', () => {
     const edit = page.getByRole('button', { name: 'Edit identity' })
     await edit.focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByLabel('First name')).toBeVisible()
+    await expect(page.getByLabel('First name')).toBeFocused()
     await page.getByRole('button', { name: 'Cancel' }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('button', { name: 'Edit identity' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Edit identity' })).toBeFocused()
   })
 
   test('has no transform motion when the reduced-motion preference is on', async ({ page }) => {

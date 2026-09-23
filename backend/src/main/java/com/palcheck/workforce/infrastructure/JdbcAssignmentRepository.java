@@ -21,7 +21,7 @@ class JdbcAssignmentRepository implements AssignmentRepository {
 
     private static final String COLUMNS = """
             id, tenant_id, employment_id, org_unit_id, title, manager_employment_id, effective_from, effective_to,
-            version, created_at, updated_at
+            version, created_at, updated_at, owned_by_system, last_synced_at
             """;
 
     private final JdbcClient jdbc;
@@ -39,18 +39,26 @@ class JdbcAssignmentRepository implements AssignmentRepository {
     }
 
     @Override
+    public void touchLastSyncedAt(TenantId tenantId, UUID assignmentId, java.time.Instant when) {
+        jdbc.sql("UPDATE workforce.assignment SET last_synced_at = :when WHERE tenant_id = :tenant AND id = :id")
+                .param("when", Sql.timestamp(when)).param("tenant", tenantId.value()).param("id", assignmentId).update();
+    }
+
+    @Override
     public void insert(Assignment a) {
         jdbc.sql("""
                         INSERT INTO workforce.assignment (id, tenant_id, employment_id, org_unit_id, title,
-                            manager_employment_id, effective_from, effective_to, version, created_at, updated_at)
+                            manager_employment_id, effective_from, effective_to, version, created_at, updated_at,
+                            owned_by_system, last_synced_at)
                         VALUES (:id, :tenant, :employment, :unit, :title, :manager, :from, :to,
-                            :version, :created, :updated)
+                            :version, :created, :updated, :owner, :syncedAt)
                         """)
                 .param("id", a.id()).param("tenant", a.tenantId().value()).param("employment", a.employmentId())
                 .param("unit", a.data().orgUnitId()).param("title", a.data().title())
                 .param("manager", a.data().managerEmploymentId()).param("from", a.effectiveFrom())
                 .param("to", a.effectiveTo()).param("version", a.version())
                 .param("created", Sql.timestamp(a.createdAt())).param("updated", Sql.timestamp(a.updatedAt()))
+                .param("owner", a.ownedBySystem()).param("syncedAt", Sql.timestampOrNull(a.lastSyncedAt()))
                 .update();
     }
 
@@ -99,12 +107,28 @@ class JdbcAssignmentRepository implements AssignmentRepository {
         int rows = jdbc.sql("""
                         UPDATE workforce.assignment
                            SET org_unit_id = :unit, title = :title, manager_employment_id = :manager,
-                               version = version + 1, updated_at = :updated
+                               version = version + 1, updated_at = :updated, last_synced_at = :syncedAt
                          WHERE tenant_id = :tenant AND id = :id AND version = :expected
                         """)
                 .param("unit", next.data().orgUnitId()).param("title", next.data().title())
                 .param("manager", next.data().managerEmploymentId()).param("updated", Sql.timestamp(next.updatedAt()))
+                .param("syncedAt", Sql.timestampOrNull(next.lastSyncedAt()))
                 .param("tenant", next.tenantId().value()).param("id", next.id()).param("expected", expectedVersion)
+                .update();
+        return rows == 1;
+    }
+
+    /** Sets only the manager link (pass 2 of a sync, ADR-0025 decision 7) without disturbing other fields or the ownership marker. */
+    @Override
+    public boolean updateManager(TenantId tenantId, UUID assignmentId, UUID managerEmploymentId, long expectedVersion,
+            java.time.Instant now) {
+        int rows = jdbc.sql("""
+                        UPDATE workforce.assignment
+                           SET manager_employment_id = :manager, version = version + 1, updated_at = :updated
+                         WHERE tenant_id = :tenant AND id = :id AND version = :expected
+                        """)
+                .param("manager", managerEmploymentId).param("updated", Sql.timestamp(now))
+                .param("tenant", tenantId.value()).param("id", assignmentId).param("expected", expectedVersion)
                 .update();
         return rows == 1;
     }
@@ -144,6 +168,7 @@ class JdbcAssignmentRepository implements AssignmentRepository {
                 rs.getObject("effective_to", LocalDate.class),
                 new AssignmentData(rs.getString("title"), Sql.uuid(rs, "org_unit_id"),
                         Sql.uuid(rs, "manager_employment_id")),
-                rs.getLong("version"), Sql.instant(rs, "created_at"), Sql.instant(rs, "updated_at"));
+                rs.getLong("version"), Sql.instant(rs, "created_at"), Sql.instant(rs, "updated_at"),
+                rs.getString("owned_by_system"), Sql.instantOrNull(rs, "last_synced_at"));
     }
 }

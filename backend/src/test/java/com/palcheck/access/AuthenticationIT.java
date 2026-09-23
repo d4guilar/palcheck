@@ -50,7 +50,7 @@ class AuthenticationIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.tenant.slug").value(tenant.slug()))
                 .andExpect(jsonPath("$.user.displayName").value(tenant.admin().displayName()))
-                .andExpect(jsonPath("$.permissions.length()").value(7))
+                .andExpect(jsonPath("$.permissions.length()").value(11))
                 .andExpect(jsonPath("$.permissions[?(@ == 'VIEW_AUDIT_HISTORY')]").isNotEmpty());
     }
 

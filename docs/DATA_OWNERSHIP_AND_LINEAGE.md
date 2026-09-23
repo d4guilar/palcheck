@@ -1,6 +1,10 @@
 # Data Ownership and Lineage
 
+> **Reviewed Phase 2 contract (2026-09-22):** entity-level Employment/Assignment ownership is enforced server-side. Person remains locally editable and is never overwritten on re-sync. Stored lineage covers initial Person first name/last name/work email, and latest synchronized Employment status/type and Assignment title. It does not claim complete provenance for every field; Person metadata describes its initial import even after a local edit. Lineage links the tenant-qualified sync run/item and exposes the external worker reference without storing raw payloads. Metadata writes follow the workforce/audit commit and can lag after a crash. Source disclosure is lazy and requires `VIEW_LINEAGE`; audit names the system but does not embed a sync-run foreign key. See [ADR-0025](adr/0025-ownership-lineage-and-sync-model-phase2.md) and the [review](PHASE_2_CODEX_REVIEW.md).
+
 > **Reconciliation notice (2026-09-19):** [Review LIN-01 and §7](CODEX_ARCHITECTURE_REVIEW.md#7-integration-feasibility-normalization-ownership-and-lineage) (explicit change/revision/operation links; correlation alone does not prove which value was sent; source-instance ownership; cutover concurrency) is accepted as a requirement for the overlay milestone under Daniel's refinement 4. Phase 1 implements only the foundations this model needs: `workforce` as the single writer of workforce data, a per-row revision, and atomic audit. The governed-field ownership policy is not implemented in Phase 1 (everything is `PALCHECK`-owned by default). Baseline text is retained.
+>
+> **Reconciliation notice (2026-09-22):** Phase 2 implements a narrower subset of sections 2–4: ownership recorded on the Employment and Assignment (not per field, not on Person, not tenant-configurable) and lineage as separate `integrations`-owned metadata, not the full governed-field policy or the outbound half of lineage (section 4.6). LQ-02 (provenance storage shape) stays open; Phase 2 answers it narrowly, for these two entities only. See [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md) section 4.3, [ADR-0025](adr/0025-ownership-lineage-and-sync-model-phase2.md).
 
 Status: Phase 0 draft, **Proposed** ([ADR-0005](adr/0005-source-of-truth-ownership.md), [ADR-0015](adr/0015-data-lineage.md)) ·
 Output of assignment step 6, plus the lineage feature from the brief.
@@ -17,7 +21,7 @@ change it, and where did it go?* Splitting them invites drift. This document def
 | **Ownership policy** | Who may write this field? | Configuration, per tenant | `workforce` (governed-field registry) + tenant policy |
 | **Provenance** | Where did this stored value come from? | Fact attached to a value | `workforce`, alongside the value |
 | **Audit record** | Who changed what, when, why? | Append-only history | `audit` |
-| **Domain/integration event** | What business fact should others react to? | Message for consumers | Outbox (`integrations`) |
+| **Domain/integration event** | What business fact should others react to? | Message for consumers | Future technical `messaging` outbox (not implemented) |
 | **Lineage view** | Source to destination, and who consumes it? | Computed *view* | `operations` (read model) |
 
 The first four are recorded once, from a **single capture point** (section 5). The fifth is computed from them and from mapping definitions.

@@ -1,13 +1,15 @@
 # Architecture
 
+> **Phase 2 implementation (2026-09-22):** the inbound simulation is implemented in `integrations`, which calls only `workforce.api`. Provider mappings stay inside the adapter; each workforce transaction includes audit, while integration outcomes/lineage are subsequent independent writes. The frontend Systems/Sync/source surfaces remain in integrations; no `operations`, messaging, event publication or legal execution was added. See the [Phase 2 plan](PHASE_2_IMPLEMENTATION_PLAN.md), [review](PHASE_2_CODEX_REVIEW.md), [ADR-0024](adr/0024-hris-adapter-boundary-phase2.md) and [ADR-0025](adr/0025-ownership-lineage-and-sync-model-phase2.md). These ADRs remain Proposed pending Daniel’s decision.
+
 > **Reconciliation notice (2026-09-19, Daniel-approved refinements 1, 2 and 6):** the transaction and dependency rules below are amended by accepted parts of [ADR-0018](adr/0018-module-transactions-and-persistence.md) and [ADR-0020](adr/0020-foundation-first-delivery-plan.md). One application command owns one local transaction and audit (and, later, durable publication) participates in it; durable publication is technical `messaging` infrastructure owned by no domain module and never by `integrations`; Phase 1 is the authenticated workforce foundation. Amended statements are marked *(amended)*. The final dependency direction is in [MODULES.md](MODULES.md) section 2a and [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md) section 3. Baseline text is retained for its reasoning; section 11 (repository structure) was updated when Phase 1 completed.
 
-Status: baseline decisions **Proposed** unless an ADR says otherwise (see [adr/README.md](adr/README.md)) · Phase 1 (authenticated workforce foundation) is implemented; section 11 shows the repository as it is.
+Status: baseline decisions **Proposed** unless an ADR says otherwise (see [adr/README.md](adr/README.md)) · Phase 1 is accepted and Phase 2 is implemented for owner review; section 11 shows the repository as it is.
 
 Companion documents: [MODULES.md](MODULES.md) · [DOMAIN_MODEL.md](DOMAIN_MODEL.md) · [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) ·
 [DATA_OWNERSHIP_AND_LINEAGE.md](DATA_OWNERSHIP_AND_LINEAGE.md) · [SECURITY.md](SECURITY.md) · [diagrams](diagrams/).
 
-> **Phase 1 review follow-up:** [PHASE_1_CODEX_REVIEW.md](PHASE_1_CODEX_REVIEW.md) records completed correctness/security fixes and UI polish. The package/transaction architecture is unchanged; search now uses bundled PostgreSQL unaccent, manager lookup is paginated, and manager graph changes serialize per tenant ([ADR-0023](adr/0023-manager-graph-concurrency.md)). Daniel's Q1-Q3 acceptance remains open.
+> **Phase 1 review follow-up:** [PHASE_1_CODEX_REVIEW.md](PHASE_1_CODEX_REVIEW.md) records completed correctness/security fixes and UI polish. The package/transaction architecture is unchanged; search now uses bundled PostgreSQL unaccent, manager lookup is paginated, and manager graph changes serialize per tenant ([ADR-0023](adr/0023-manager-graph-concurrency.md)). Daniel accepted Q1 and Q3 and accepted Q2 with amendment on 2026-09-21. Q3 accepts the existing employment values as software/domain placeholders, with country-specific legal vocabulary kept separate ([DOMAIN_MODEL.md](DOMAIN_MODEL.md#41-accepted-phase-1-employment-vocabulary)).
 
 ## 1. Architectural drivers
 
@@ -125,8 +127,8 @@ Logs never contain PII values ([SECURITY.md](SECURITY.md)).
 | Level | What | Notes |
 |---|---|---|
 | Unit | Domain invariants, state machines, mappers | Fast, no I/O. |
-| Module | A module behind its public API with a real PostgreSQL (Testcontainers) | Primary confidence layer. |
-| Architecture | Dependency rules, no cross-module access, no provider types outside adapters | ArchUnit or Modulith verification. |
+| Module | A module behind its public API with real PostgreSQL | Phase 1 uses embedded PostgreSQL while no container runtime is available (Q1 ACCEPTED); reconsider Testcontainers when a runtime becomes standard. |
+| Architecture | Dependency rules, no cross-module access, no provider types outside adapters | ArchUnit for Phase 1 (Q1 ACCEPTED); Spring Modulith is not adopted. |
 | Contract | Connector port; `NormalizedWorker`; published event schemas | Schema compatibility checks for evolution. |
 | Failure injection | Crash between business commit and dispatch; duplicate delivery; consumer timeout | Proves the outbox and idempotency claims with evidence, not assertion. |
 | Property-based | Effective-dating overlaps, gaps, retroactive changes | Where example tests miss edge cases. |
@@ -160,7 +162,7 @@ Scale vertically first; PostgreSQL comfortably carries the modeled workload for 
 
 ## 11. Repository structure
 
-**As of Phase 1 (actual):**
+**As of Phase 2 (actual):**
 
 ```
 palcheck/
@@ -175,22 +177,23 @@ palcheck/
 │   │   ├── platform/         request context and logging, problem details, command idempotency, clock (technical, no domain)
 │   │   ├── access/           tenant, principal mapping, roles and permissions, OIDC session security (api/ is public, internal/ is not)
 │   │   ├── audit/            append-only audit recorder and history reader (api/ is public)
-│   │   └── workforce/        domain, application, infrastructure (JDBC), web: Person, Employment, Assignment, Legal Entity, Org Unit
-│   └── src/main/resources/db/migration/   V1 schemas, V2 access, V3 workforce, V4 audit, V5 idempotency
+│   │   ├── integrations/     provider adapter, normalization, sync outcomes, lineage and API
+│   │   └── workforce/        api (import port), domain, application, infrastructure (JDBC), web: Person, Employment, Assignment, Legal Entity, Org Unit
+│   └── src/main/resources/db/migration/   V1–V5 foundation, V6 accent search, V7 integrations/ownership, V8 sync tenant integrity
 ├── web/                      React + TypeScript SPA, component tests (Vitest) and e2e/ (Playwright)
 └── docs/                     PRODUCT_VISION, ARCHITECTURE, MODULES, DOMAIN_MODEL, INTEGRATION_ARCHITECTURE, ...,
-                              PHASE_1_IMPLEMENTATION_PLAN, LOCAL_DEVELOPMENT, WORKLOG, adr/ (0001 to 0022), diagrams/, localization/
+                              PHASE_1_IMPLEMENTATION_PLAN, PHASE_2_IMPLEMENTATION_PLAN, LOCAL_DEVELOPMENT, WORKLOG, adr/ (0001 to 0025), diagrams/, localization/
 ```
 
 **Not created yet** (each appears when the phase that needs it starts):
 
 | Path | Appears | Notes |
 |---|---|---|
-| `contracts/` | with the first published event or connector | JSON Schema for published events and `NormalizedWorker`. Phase 1 publishes nothing, so there is nothing to describe |
+| `contracts/` | when an external contract needs independent publication | No event is published; Phase 2 `NormalizedWorker` is an in-process Java boundary type |
 | Legal Concept Registry content files | with registry work | Location decided in [ADR-0012](adr/0012-legal-concept-registry.md) |
 | technical `messaging` package | when a downstream effect exists | Durable publication inside the command transaction; never owned by `integrations` ([ADR-0018](adr/0018-module-transactions-and-persistence.md)) |
-| `integrations`, `lifecycle`, `countrypolicy`, `operations` packages | later phases | See [MODULES.md](MODULES.md) |
-| `mock-hris/` | Phase 2 | Workday-shaped reference HRIS over synthetic data |
+| `lifecycle`, `countrypolicy`, `operations` packages | later phases | See [MODULES.md](MODULES.md) |
+| `mock-hris/` | if network failure testing becomes necessary | Phase 2 instead uses an in-process, deterministic simulation inside the adapter |
 | `observability/` | later | When OpenTelemetry, Prometheus and Grafana are adopted |
 
 The build tool question is settled: Maven, with module boundaries as Java packages checked by ArchUnit tests, not Spring Modulith ([ADR-0022](adr/0022-phase1-technical-baseline.md)).

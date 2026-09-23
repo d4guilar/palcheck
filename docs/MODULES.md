@@ -1,5 +1,7 @@
 # Modules and Bounded Contexts
 
+> **Implemented Phase 2 subset (2026-09-22):** `integrations` now owns the in-process simulation, adapter mappings, sync runs/items, lineage API and Systems/Sync UI. It consumes `workforce.api.WorkforceImportPort`; workforce never depends on integrations. The allowed neighbours are `shared`, `platform`, `access.api`, `audit.api`, `workforce.api`, enforced by ArchUnit. `messaging` and `operations` remain absent. Their relationships below describe future capabilities, not current dependencies. See the [Phase 2 plan](PHASE_2_IMPLEMENTATION_PLAN.md) and [review](PHASE_2_CODEX_REVIEW.md).
+
 > **Reconciliation notice (2026-09-19, Daniel-approved refinements 1, 2 and 6):** section 2a below is the **accepted dependency direction** and supersedes the dependency matrix in section 2 wherever they differ. Outbox ownership moves from `integrations` to a technical `messaging` capability; `lifecycle` and `operations` are deferred until they own process data; Phase 1 builds `access`, `audit`, `workforce` plus the technical `platform` and `shared` packages. See [ADR-0018](adr/0018-module-transactions-and-persistence.md) (accepted in part) and [Review §5](CODEX_ARCHITECTURE_REVIEW.md#5-backend-feasibility). Sections 2 and 3 are retained as the original Phase 0 proposal.
 
 Status: Phase 0 draft, **Proposed** ([ADR-0001](adr/0001-modular-monolith.md)) · Output of assignment step 4.
@@ -33,7 +35,7 @@ Accepted under Daniel's refinements 1 and 2 ([ADR-0018](adr/0018-module-transact
 | `audit` | Domain module | 1 | `shared`, `platform` | schema `audit`: `audit_entry` (append-only) |
 | `workforce` | Domain module | 1 | `shared`, `platform`, `access.api`, `audit.api` | schema `workforce`: legal entity, org unit, person, employment, assignment |
 | `messaging` | **Technical** infrastructure | provisioning milestone | `shared`, `platform` | durable publication and delivery state. **Not owned by `integrations`.** |
-| `integrations` | Domain module | provisioning / overlay | `shared`, `platform`, `access.api`, `audit.api`, `workforce.api`, `messaging.api` (consumes published events) | destination operations, mappings, sync state |
+| `integrations` | Domain module | Phase 2 inbound slice implemented | `shared`, `platform`, `access.api`, `audit.api`, `workforce.api`; `messaging.api` only when publication exists later | adapter mappings, sync state, lineage and Systems/Sync UI; destination operations remain future |
 | `lifecycle` | Domain module | deferred | `workforce.api`, `access.api`, `audit.api`, `messaging.api` | only when approval/process state exists |
 | `countrypolicy` | Domain module | deferred (no behavior in Phase 1) | `shared`, `platform`, `access.api`, `audit.api` | reviewed content projection, later assessments |
 | `operations` | Read plane | deferred | `access.api`, `audit.api`, `integrations.api`, `messaging` metadata queries | authored catalog metadata, incidents |

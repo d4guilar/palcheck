@@ -8,6 +8,7 @@ import com.palcheck.workforce.domain.EmploymentStatus;
 import com.palcheck.workforce.domain.EmploymentType;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -21,7 +22,7 @@ class JdbcEmploymentRepository implements EmploymentRepository {
 
     private static final String COLUMNS = """
             id, tenant_id, person_id, legal_entity_id, status, employment_type, country, start_date, end_date,
-            version, created_at, updated_at
+            version, created_at, updated_at, owned_by_system, external_worker_id, last_synced_at
             """;
 
     private final JdbcClient jdbc;
@@ -34,9 +35,10 @@ class JdbcEmploymentRepository implements EmploymentRepository {
     public void insert(Employment e) {
         jdbc.sql("""
                         INSERT INTO workforce.employment (id, tenant_id, person_id, legal_entity_id, status,
-                            employment_type, country, start_date, end_date, version, created_at, updated_at)
+                            employment_type, country, start_date, end_date, version, created_at, updated_at,
+                            owned_by_system, external_worker_id, last_synced_at)
                         VALUES (:id, :tenant, :person, :entity, :status, :type, :country, :start, :end,
-                            :version, :created, :updated)
+                            :version, :created, :updated, :owner, :externalId, :syncedAt)
                         """)
                 .param("id", e.id()).param("tenant", e.tenantId().value()).param("person", e.personId())
                 .param("entity", e.legalEntityId()).param("status", e.data().status().name())
@@ -44,7 +46,19 @@ class JdbcEmploymentRepository implements EmploymentRepository {
                 .param("start", e.data().startDate()).param("end", e.data().endDate())
                 .param("version", e.version())
                 .param("created", Sql.timestamp(e.createdAt())).param("updated", Sql.timestamp(e.updatedAt()))
+                .param("owner", e.ownedBySystem()).param("externalId", e.externalWorkerId())
+                .param("syncedAt", Sql.timestampOrNull(e.lastSyncedAt()))
                 .update();
+    }
+
+    @Override
+    public Optional<Employment> findByExternalIdentity(TenantId tenantId, String ownedBySystem, String externalWorkerId) {
+        return jdbc.sql("SELECT " + COLUMNS + """
+                         FROM workforce.employment
+                        WHERE tenant_id = :tenant AND owned_by_system = :system AND external_worker_id = :externalId
+                        """)
+                .param("tenant", tenantId.value()).param("system", ownedBySystem).param("externalId", externalWorkerId)
+                .query(JdbcEmploymentRepository::map).optional();
     }
 
     @Override
@@ -76,15 +90,25 @@ class JdbcEmploymentRepository implements EmploymentRepository {
         int rows = jdbc.sql("""
                         UPDATE workforce.employment
                            SET status = :status, employment_type = :type, country = :country,
-                               start_date = :start, end_date = :end, version = version + 1, updated_at = :updated
+                               start_date = :start, end_date = :end, version = version + 1, updated_at = :updated,
+                               last_synced_at = :syncedAt
                          WHERE tenant_id = :tenant AND id = :id AND version = :expected
                         """)
                 .param("status", next.data().status().name()).param("type", next.data().employmentType().name())
                 .param("country", next.data().country()).param("start", next.data().startDate())
                 .param("end", next.data().endDate()).param("updated", Sql.timestamp(next.updatedAt()))
+                .param("syncedAt", Sql.timestampOrNull(next.lastSyncedAt()))
                 .param("tenant", next.tenantId().value()).param("id", next.id()).param("expected", expectedVersion)
                 .update();
         return rows == 1;
+    }
+
+    /** Refreshes only {@code last_synced_at}, without bumping the version: an unchanged re-sync writes no audit entry and must not look like a change either (ADR-0025 decision 9). */
+    @Override
+    public void touchLastSyncedAt(TenantId tenantId, UUID employmentId, Instant syncedAt) {
+        jdbc.sql("UPDATE workforce.employment SET last_synced_at = :syncedAt WHERE tenant_id = :tenant AND id = :id")
+                .param("syncedAt", Sql.timestamp(syncedAt)).param("tenant", tenantId.value()).param("id", employmentId)
+                .update();
     }
 
     static Employment map(ResultSet rs, int rowNum) throws SQLException {
@@ -93,6 +117,8 @@ class JdbcEmploymentRepository implements EmploymentRepository {
                 new EmploymentData(EmploymentStatus.valueOf(rs.getString("status")),
                         EmploymentType.valueOf(rs.getString("employment_type")), rs.getString("country"),
                         rs.getObject("start_date", LocalDate.class), rs.getObject("end_date", LocalDate.class)),
-                rs.getLong("version"), Sql.instant(rs, "created_at"), Sql.instant(rs, "updated_at"));
+                rs.getLong("version"), Sql.instant(rs, "created_at"), Sql.instant(rs, "updated_at"),
+                rs.getString("owned_by_system"), rs.getString("external_worker_id"),
+                Sql.instantOrNull(rs, "last_synced_at"));
     }
 }

@@ -114,11 +114,13 @@ describe('People list', () => {
     await waitFor(() => expect(network.callsTo('GET', '/api/people?page=1')).toHaveLength(1))
   })
 
-  it('lets a keyboard user reach the first record straight from the search box', async () => {
+  it('lets a keyboard user move through the search and create toolbar into the records', async () => {
     mockNetwork({ 'GET /api/session': { body: session(ALL_PERMISSIONS) }, 'GET /api/people': { body: page(rows) } })
     renderApp('/people')
     await screen.findByRole('table')
     screen.getByLabelText('Search people').focus()
+    await userEvent.tab()
+    expect(screen.getByRole('link', { name: 'New person' })).toHaveFocus()
     await userEvent.tab()
     expect(screen.getByRole('link', { name: 'Mariana Vargas Mora' })).toHaveFocus()
   })

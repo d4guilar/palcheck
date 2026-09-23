@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** Periodically removes expired idempotency receipts. Disabled in tests; harmless if several instances run it. */
+/** Removes receipts past their guaranteed retry window, not business effects. Disabled in tests. */
 @Configuration
 @EnableScheduling
 @ConditionalOnProperty(name = "palcheck.idempotency.purge-enabled", havingValue = "true", matchIfMissing = true)

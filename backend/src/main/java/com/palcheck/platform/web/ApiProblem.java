@@ -20,7 +20,8 @@ public record ApiProblem(
         String correlationId,
         Instant timestamp,
         List<FieldViolation> errors,
-        Long currentVersion) {
+        Long currentVersion,
+        String ownedBySystem) {
 
     public static final String MEDIA_TYPE = "application/problem+json";
 }

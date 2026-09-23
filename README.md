@@ -4,7 +4,7 @@
 
 PalCheck is an independent workforce platform project, starting with Costa Rica. Its long-term purpose is to connect a clear workforce model with local HR concepts and downstream systems. Global HR abstractions do not always express Latin American concepts naturally; the design keeps domain concepts, researched legal rules, and software behavior separate.
 
-**Current status: Phase 1 implemented and independently reviewed; awaiting Daniel's acceptance.** The working application is an authenticated, tenant-aware workforce directory with safe editing and change history. Localization policy execution and orchestration remain future work. See the [review and evidence](docs/PHASE_1_CODEX_REVIEW.md) and [implementation plan](docs/PHASE_1_IMPLEMENTATION_PLAN.md).
+**Current status: Phase 2 is implemented and independently reviewed, awaiting Daniel’s acceptance.** The accepted Phase 1 workforce foundation now includes a simulated HRIS translation slice. See the [Phase 2 review and evidence](docs/PHASE_2_CODEX_REVIEW.md) and [implementation plan](docs/PHASE_2_IMPLEMENTATION_PLAN.md). Localization policy execution and orchestration remain future work.
 
 ## What works today
 
@@ -12,18 +12,19 @@ PalCheck is an independent workforce platform project, starting with Costa Rica.
 - A paged People directory with accent-insensitive search: `Solis` finds `Solís`, preserving the actual spelling.
 - Person records with identity, employment, assignment, and readable change history; create and edit synthetic records.
 - Server-side manager search and paging, including multiple employments per person.
-- Independent resource versions, deliberate conflict recovery, idempotent retries within a bounded receipt lifetime, and audit writes in the business transaction.
+- Independent resource versions, deliberate conflict recovery, idempotent write retries within a guaranteed retry window of at least 24 hours, and audit writes in the business transaction.
+- Enterprise Systems with **Workday Simulation**: provider-neutral translation, repeatable synchronization without duplicate workforce records, partial failure inspection, externally managed Employment/Assignment, source lineage, and system-attributed history. Tenant and permission checks apply throughout. **Simulated/reference-only; no live Workday integration, certification, or API-parity claim.**
 - A responsive native-control interface with light/dark themes, keyboard navigation, and automated accessibility checks.
 
 ![People directory with synthetic records](docs/screenshots/people.png)
 
 ![Person record with employment and change history](docs/screenshots/person.png)
 
-[View the dark appearance](docs/screenshots/person-dark.png). All screenshot data is fictional.
+[View the dark appearance](docs/screenshots/person-dark.png) or [inline editing](docs/screenshots/person-edit.png). All screenshot data is fictional. The [UI polish report](docs/UI_PHASE_1_APPLE_POLISH.md) records design changes and verification.
 
 ## Architecture
 
-One Java/Spring modular monolith and one React application. Packages separate `shared`, `platform`, `access`, `audit`, and `workforce`; ArchUnit checks their boundaries. Explicit JDBC queries and tenant-qualified foreign keys keep isolation visible. Transactions keep the workforce change, audit entry, and idempotency receipt together.
+One Java/Spring modular monolith and one React application. Packages separate `shared`, `platform`, `access`, `audit`, `workforce`, and `integrations`; ArchUnit checks their boundaries. Explicit JDBC queries and tenant-qualified foreign keys keep isolation visible. Local command transactions keep the workforce change, audit entry, and idempotency receipt together. Sync writes use `workforce.api`, one worker transaction including audit; integration outcomes and lineage are recorded afterward, with [explicit crash-recovery limits](docs/PHASE_2_CODEX_REVIEW.md#21-remaining-phase-2-limitations).
 
 **Stack:** Java 17, Spring Boot 4, Spring Security OIDC, Spring JDBC, PostgreSQL 17, Flyway; React 19, TypeScript, Vite, TanStack Query, and `react-intl`. Keycloak is the development identity provider. Application/domain code remains provider-neutral. OAuth tokens are not exposed to application JavaScript; standard provider logout uses a browser redirect.
 
@@ -70,13 +71,13 @@ Run each command from the indicated directory:
 | `web` | `npx playwright install chromium` then `npm run e2e` | Browser journeys against the running full stack |
 | `web` | `npm audit --audit-level=high` | npm dependency advisories |
 
-The review passed **155 backend tests, 94 frontend tests, and 15 Chrome browser tests**, plus typecheck, lint, and production build. Tests cover tenant/permission denial, transaction rollback on audit failure, concurrent writes, duplicate requests, search, keyboard navigation, and browser axe checks. Human screen-reader testing and other browsers remain unverified.
+The review passed **192 backend tests (72 unit/architecture and 120 PostgreSQL integration), 114 frontend tests, and 20 Chrome browser tests**, plus typecheck, lint, and production build. Tests cover tenant/permission denial, transaction rollback on audit failure, concurrent writes, duplicate requests, search, keyboard navigation, and browser axe checks. Human screen-reader testing and other browsers remain unverified.
 
 Build, browser, dependency-review, npm-audit, and secret-scan workflows are prepared under [.github/workflows](.github/workflows/). They have not run on GitHub. Hosted security settings and the Java dependency graph still require verification; this is not a production-readiness claim.
 
 ## Planned, not implemented
 
-Future milestones may add provider adapters, workforce-event orchestration, and researched country policy packs. Phase 1 has no HRIS connector or simulator, broker, outbox dispatcher, payroll, legal calculations, provisioning, or operations console. Daniel opens each milestone explicitly. See the [roadmap](docs/ROADMAP.md), [integration design](docs/INTEGRATION_ARCHITECTURE.md), and [localization research policy](docs/localization/costa-rica/LEGAL_RESEARCH_POLICY.md).
+Future milestones may add real provider adapters, workforce-event orchestration, and researched country policy packs. The current simulation has no network connection to Workday. No broker, outbox dispatcher, payroll, legal calculations, provisioning, or operations console is implemented. Daniel opens each milestone explicitly. See the [roadmap](docs/ROADMAP.md), [integration design](docs/INTEGRATION_ARCHITECTURE.md), and [localization research policy](docs/localization/costa-rica/LEGAL_RESEARCH_POLICY.md).
 
 ## Project documentation
 
@@ -86,6 +87,7 @@ Future milestones may add provider adapters, workforce-event orchestration, and 
 | Engineering decisions | [ADRs](docs/adr/README.md), [architecture review](docs/CODEX_ARCHITECTURE_REVIEW.md) |
 | Product design | [UI system](docs/UI_SYSTEM.md) |
 | Phase 1 review and next prompt | [Codex review](docs/PHASE_1_CODEX_REVIEW.md), [review handoff](docs/PHASE_1_REVIEW_HANDOFF.md) |
+| Phase 2 implementation and review | [Plan](docs/PHASE_2_IMPLEMENTATION_PLAN.md), [Codex review](docs/PHASE_2_CODEX_REVIEW.md) |
 | AI-assisted engineering history | [Agent rules](AGENTS.md), [collaboration](docs/AI_COLLABORATION.md), [worklog](docs/WORKLOG.md) |
 
 ## Ownership and independence

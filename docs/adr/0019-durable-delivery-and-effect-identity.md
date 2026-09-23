@@ -17,6 +17,8 @@ Daniel approved refinement 3 (business operation identity is separate from event
 
 Review section 7 (page-checkpoint barrier, missing records are reconciliation candidates and never inferred terminations, source-instance identity, ownership cutover) is likewise accepted as a **requirement for the overlay milestone**. See [../INTEGRATION_ARCHITECTURE.md](../INTEGRATION_ARCHITECTURE.md). Amends ADR-0006 decision 3 (idempotency key derived from `(eventId, destination, operation)`) and ADR-0007 decision 1; original reasoning preserved.
 
+> **Phase 1 Q2 clarification (2026-09-21):** [ADR-0022](0022-phase1-technical-baseline.md#q2-acceptance-with-amendment-2026-09-21) records a 24-hour guaranteed retry window for workforce write receipts. Beyond it, receipt availability is not guaranteed; it is not permission to repeat the business effect. This does not alter the accepted requirements below for future durable effect identity or authorize their implementation.
+
 ## Context
 
 [Review EVT-01 and LIN-01](../CODEX_ARCHITECTURE_REVIEW.md) identify gaps in per-event deduplication, fan-out durability, lease recovery, frozen outbound data and projection replay. A database receipt cannot atomically commit with an external account or equipment order. Different event representations may describe the same business effect.

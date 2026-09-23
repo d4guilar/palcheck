@@ -17,12 +17,14 @@ Rules: [LEGAL_RESEARCH_POLICY.md](LEGAL_RESEARCH_POLICY.md). Everything below is
 
 ## 1. Worker classification and contracts
 
+**Phase 1 boundary (Q3 ACCEPTED, 2026-09-21):** `PENDING`, `ACTIVE`, `ENDED` and `FULL_TIME`, `PART_TIME` are software/domain placeholders, not answers to these legal research questions. WC-1/WC-4, WT-1 and TM-1 may inform richer local classifications, mappings, metadata, policy concepts or terminology. Keep those separate from the accepted core vocabulary; infer no statutory calculation, eligibility or compliance from current values. All questions below remain `UNRESEARCHED`.
+
 | # | Question | Pri | Unblocks |
 |---|---|---|---|
-| WC-1 | What kinds of employment contract and worker relationship exist, and how are they distinguished? | P1 | `Employment.workerType` values ([DOMAIN_MODEL.md](../../DOMAIN_MODEL.md)) |
+| WC-1 | What kinds of employment contract and worker relationship exist, and how are they distinguished? | P1 | Local worker/contract classifications and explicit mappings or supplemental metadata; not an automatic replacement for Phase 1 `employmentType` ([DOMAIN_MODEL.md](../../DOMAIN_MODEL.md#41-accepted-phase-1-employment-vocabulary)) |
 | WC-2 | How is the distinction between an employee and an independent contractor defined and assessed? | P1 | Contractor modeling; misclassification concept |
 | WC-3 | Does contract type affect what data a hire requires? Which data? | P1 | `HireRequirements` capability shape; local supplemental data |
-| WC-4 | Are there fixed-term or trial-period constructs that affect lifecycle statuses? | P1 | Status taxonomy (OQ-06) |
+| WC-4 | Are there fixed-term or trial-period constructs that affect lifecycle statuses? | P1 | Local lifecycle concepts and mappings to core software states (OQ-06) |
 
 ## 2. Employer structures
 

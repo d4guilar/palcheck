@@ -6,6 +6,7 @@ import { EmptyState, ErrorState, LoadingState } from '../components/States'
 import { Initials } from '../components/Initials'
 import { PageTitle } from '../components/PageTitle'
 import { StatusTag } from '../components/StatusTag'
+import { SearchField } from '../components/SearchField'
 import { useT } from '../i18n/useT'
 import { useSession } from '../session/sessionContext'
 
@@ -55,13 +56,18 @@ export function PeoplePage() {
 
   return (
     <div className="stack directory-page">
-      <div className="page-header">
+      <div className="page-header directory-header">
         <div>
           <PageTitle>{t('people.title')}</PageTitle>
           {query.data ? (
             <p className="page-header__sub">{t(q ? 'people.matches' : 'people.count', { count: total, tenant: session.tenant.name })}</p>
           ) : null}
         </div>
+        <form className="directory-search" role="search" onSubmit={(event) => event.preventDefault()}>
+          <SearchField id="people-search" label={t('people.search.label')} hint={t('people.search.hint')}
+            value={draft} placeholder={t('people.search.placeholder')} maxLength={100} autoComplete="off"
+            onChange={(event) => { setEdited(true); setDraft(event.target.value) }} />
+        </form>
         {session.can('CREATE_PERSON') ? (
           <Link className="btn btn--primary" to="/people/new">
             {t('people.new')}
@@ -69,27 +75,7 @@ export function PeoplePage() {
         ) : null}
       </div>
 
-      <form className="directory-toolbar" role="search" onSubmit={(event) => event.preventDefault()}>
-        <div className="field directory-search">
-          <label className="field__label" htmlFor="people-search">
-            {t('people.search.label')}
-          </label>
-          <input
-            id="people-search"
-            className="input"
-            type="search"
-            value={draft}
-            placeholder={t('people.search.placeholder')}
-            onChange={(event) => { setEdited(true); setDraft(event.target.value) }}
-            maxLength={100}
-            aria-describedby="search-hint"
-            autoComplete="off"
-          />
-        </div>
-        <p id="search-hint" className="small muted">{t('people.search.hint')}</p>
-      </form>
-
-      {query.isPending ? <LoadingState message={t('people.loading')} /> : null}
+      {query.isPending ? <LoadingState message={t('people.loading')} rows /> : null}
       {query.isError ? (
         <ErrorState title={t('people.error.title')} body={t('people.error.body')} onRetry={() => void query.refetch()} />
       ) : null}
@@ -115,10 +101,10 @@ export function PeoplePage() {
       {query.data && total > 0 ? (
         <>
           <div className="table-wrap">
-            <table className="table" aria-busy={query.isPlaceholderData}>
+            <table className="table" role="table" aria-busy={query.isPlaceholderData}>
               <caption className="visually-hidden">{t('people.table.caption', { tenant: session.tenant.name })}</caption>
-              <thead>
-                <tr>
+              <thead role="rowgroup">
+                <tr role="row">
                   <th scope="col">{t('people.col.name')}</th>
                   <th scope="col" className="col-title">{t('people.col.title')}</th>
                   <th scope="col" className="col-unit">{t('people.col.orgUnit')}</th>
@@ -126,19 +112,19 @@ export function PeoplePage() {
                   <th scope="col">{t('people.col.status')}</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {query.data.items.map((person) => (
-                  <tr key={person.personId}>
-                    <td>
+                  <tr key={person.personId} role="row">
+                    <td role="cell">
                       <div className="person-cell"><Initials name={person.displayName} /><div>
                         <Link to={`/people/${person.personId}`}>{person.displayName}</Link>
-                        <div className="small muted">{person.workEmail}</div>
+                        <div className="small muted person-email">{person.workEmail}</div>
                       </div></div>
                     </td>
-                    <td className="col-title">{person.title ?? <span className="muted">—</span>}</td>
-                    <td className="col-unit">{person.orgUnitName ?? <span className="muted">—</span>}</td>
-                    <td className="col-entity">{person.legalEntityName ?? <span className="muted">—</span>}</td>
-                    <td>
+                    <td role="cell" className="col-title">{person.title ?? <span className="muted">—</span>}</td>
+                    <td role="cell" className="col-unit">{person.orgUnitName ?? <span className="muted">—</span>}</td>
+                    <td role="cell" className="col-entity">{person.legalEntityName ?? <span className="muted">—</span>}</td>
+                    <td role="cell">
                       <StatusTag status={person.employmentStatus} />
                     </td>
                   </tr>

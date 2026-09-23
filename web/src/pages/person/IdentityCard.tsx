@@ -3,9 +3,11 @@ import { useState } from 'react'
 import { api } from '../../api/endpoints'
 import type { Person } from '../../api/types'
 import { FormField } from '../../components/FormField'
+import { RecordSection } from '../../components/RecordSection'
 import { FormFeedback } from '../../forms/FormFeedback'
 import { fieldId } from '../../forms/failure'
 import { useSaveForm } from '../../forms/useSaveForm'
+import { useEditorFocus } from '../../forms/useEditorFocus'
 import { useT } from '../../i18n/useT'
 
 const LOCALES = ['en', 'es', 'es-CR'] as const
@@ -14,19 +16,18 @@ const LOCALES = ['en', 'es', 'es-CR'] as const
 export function IdentityCard({ person, canEdit, onSaved }: { person: Person; canEdit: boolean; onSaved: () => void }) {
   const t = useT()
   const [editing, setEditing] = useState<Person | null>(null)
+  const editorRegion = useEditorFocus(editing ? 'identity' : null, fieldId('identity', 'firstName'))
   const queryClient = useQueryClient()
   const none = t('person.value.none')
 
   return (
-    <section className="card" aria-labelledby="identity-heading">
-      <div className="card__header">
-        <h2 id="identity-heading">{t('person.section.identity')}</h2>
-        {canEdit && !editing ? (
-          <button type="button" className="btn btn--quiet" onClick={() => setEditing(person)} aria-label={t('person.edit.identity')}>
+    <RecordSection regionRef={editorRegion} id="identity-heading" title={t('person.section.identity')} action={
+        canEdit && !editing ? (
+          <button type="button" data-edit="identity" className="btn btn--quiet" onClick={() => setEditing(person)} aria-label={t('person.edit.identity')}>
             {t('action.edit')}
           </button>
-        ) : null}
-      </div>
+        ) : null
+      }>
 
       {editing ? (
         // Only explicitly reviewing the latest version replaces the editing snapshot.
@@ -68,12 +69,13 @@ export function IdentityCard({ person, canEdit, onSaved }: { person: Person; can
               <dd>{t(`locale.${person.locale as (typeof LOCALES)[number]}`)}</dd>
             </div>
           </dl>
-          <p className="small muted" style={{ marginTop: 'var(--space-4)' }}>
-            {t('person.revision', { version: person.version })}
-          </p>
+          <details className="record-metadata">
+            <summary>{t('person.recordDetails')}</summary>
+            <p>{t('person.revision', { version: person.version })}</p>
+          </details>
         </>
       )}
-    </section>
+    </RecordSection>
   )
 }
 

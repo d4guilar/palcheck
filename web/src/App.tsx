@@ -1,3 +1,6 @@
+import { SystemsPage } from './pages/integrations/SystemsPage'
+import { SystemPage } from './pages/integrations/SystemPage'
+import { SyncPage } from './pages/integrations/SyncPage'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { PageTitle } from './components/PageTitle'
@@ -31,6 +34,9 @@ function SignedInRoutes() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<Navigate to="/people" replace />} />
+        <Route path="systems" element={<SystemsPage />} />
+        <Route path="systems/:code" element={<SystemPage />} />
+        <Route path="syncs/:runId" element={<SyncPage />} />
         <Route path="people" element={<PeoplePage />} />
         <Route path="people/new" element={<NewPersonPage />} />
         <Route path="people/:personId" element={<PersonDetailPage />} />

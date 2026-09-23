@@ -46,7 +46,9 @@ describe('Person detail', () => {
     expect(screen.getByText('Support Analyst · Support')).toBeInTheDocument()
     const identity = screen.getByRole('region', { name: 'Identity' })
     expect(within(identity).getByText('mariana.vargas@example.test')).toBeInTheDocument()
-    expect(within(identity).getByText('Revision 3')).toBeInTheDocument()
+    expect(within(identity).getByText('Revision 3')).not.toBeVisible()
+    await userEvent.click(within(identity).getByText('Record details'))
+    expect(within(identity).getByText('Revision 3')).toBeVisible()
 
     expect(await screen.findByRole('article', { name: /Demo Servicios/ })).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Assignment' })).toHaveTextContent('Support Analyst')
@@ -70,7 +72,10 @@ describe('Person detail', () => {
     let failing = true
     mockNetwork(routes(ALL_PERMISSIONS, { 'GET /api/people/p-1': () => (failing ? problem(500, 'INTERNAL_ERROR') : { body: person() }) }))
     renderApp('/people/p-1')
-    expect(await screen.findByRole('alert')).toHaveTextContent('This record could not be loaded')
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveAccessibleName('This record could not be loaded')
+    expect(alert).toHaveTextContent('Check your connection and try again.')
+    expect(screen.getAllByRole('heading', { name: 'This record could not be loaded' })).toHaveLength(1)
     failing = false
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Mariana Vargas Mora' })).toBeInTheDocument()
@@ -236,6 +241,9 @@ describe('Person detail', () => {
       const network = mockNetwork(routes(ALL_PERMISSIONS, { 'PATCH /api/employments/e-1': { body: employment() } }))
       renderApp('/people/p-1')
       await userEvent.click(await screen.findByRole('button', { name: 'Edit employment' }))
+      expect(screen.getByLabelText('Employment type')).toHaveAccessibleDescription(
+        'Software classification used by PalCheck. Local legal interpretation may vary by country.',
+      )
       await userEvent.selectOptions(screen.getByLabelText('Employment type'), 'PART_TIME')
       await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
 

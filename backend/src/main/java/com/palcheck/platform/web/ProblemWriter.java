@@ -36,12 +36,18 @@ public class ProblemWriter {
             case CONFLICT -> HttpStatus.CONFLICT;
             case IDEMPOTENCY_CONFLICT -> HttpStatus.UNPROCESSABLE_CONTENT;
             case PAYLOAD_TOO_LARGE -> HttpStatus.CONTENT_TOO_LARGE;
+            case EXTERNALLY_OWNED -> HttpStatus.CONFLICT;
             case INTERNAL_ERROR -> HttpStatus.INTERNAL_SERVER_ERROR;
         };
     }
 
     public ApiProblem build(HttpServletRequest request, HttpStatus status, ErrorCode code, String detail,
             List<FieldViolation> errors, Long currentVersion) {
+        return build(request, status, code, detail, errors, currentVersion, null);
+    }
+
+    public ApiProblem build(HttpServletRequest request, HttpStatus status, ErrorCode code, String detail,
+            List<FieldViolation> errors, Long currentVersion, String ownedBySystem) {
         return new ApiProblem(
                 TYPE_PREFIX + code.name().toLowerCase().replace('_', '-'),
                 title(code),
@@ -52,11 +58,12 @@ public class ProblemWriter {
                 (String) request.getAttribute(CorrelationFilter.CORRELATION_ID_ATTRIBUTE),
                 Instant.now(clock),
                 errors == null || errors.isEmpty() ? null : List.copyOf(errors),
-                currentVersion);
+                currentVersion,
+                ownedBySystem);
     }
 
     public ApiProblem build(HttpServletRequest request, ErrorCode code, String detail) {
-        return build(request, statusFor(code), code, detail, null, null);
+        return build(request, statusFor(code), code, detail, null, null, null);
     }
 
     public void write(HttpServletRequest request, HttpServletResponse response, ErrorCode code, String detail)
@@ -83,6 +90,7 @@ public class ProblemWriter {
             case CONFLICT -> "The record changed since it was read";
             case IDEMPOTENCY_CONFLICT -> "The idempotency key was already used for a different request";
             case PAYLOAD_TOO_LARGE -> "The request is too large";
+            case EXTERNALLY_OWNED -> "This record is managed by an external system";
             case INTERNAL_ERROR -> "An unexpected error occurred";
         };
     }

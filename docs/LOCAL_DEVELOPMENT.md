@@ -1,6 +1,6 @@
 # Local development
 
-How to run PalCheck's Phase 1 application on your machine, sign in as the synthetic demo users, run every test suite, and fix the usual problems. Everything here uses **fictional data and development-only placeholder credentials**; nothing in this guide is a real secret.
+How to run PalCheck's Phase 1 and Phase 2 application on your machine, sign in as the synthetic demo users, run every test suite, and fix the usual problems. Everything here uses **fictional data and development-only placeholder credentials**; nothing in this guide is a real secret.
 
 ## What runs where
 
@@ -59,7 +59,7 @@ All demo users share the password in `PALCHECK_DEMO_USER_PASSWORD` (default `cha
 | `hr.admin@globex.example` | Globex Andina | HR_ADMIN | A different, smaller tenant; cannot see or open Acme records |
 | `unmapped@acme.example` | none | none | Signs in at the identity provider but has no PalCheck workspace: "Your account is not assigned to a workspace" |
 
-The seeded people, organizations and emails are fictional (emails use the reserved `.example` domain). Employment statuses and types are placeholders for software behavior, **not** legal classifications; PalCheck implements no Costa Rican legal behavior in Phase 1.
+The seeded people, organizations and emails are fictional (emails use the reserved `.example` domain). Employment statuses and types are core software vocabulary, deliberately legally neutral (**not** legal classifications); PalCheck implements no Costa Rican legal behavior in Phase 1.
 
 ## Without Docker
 
@@ -127,3 +127,23 @@ People and manager search ignore accents and case while preserving the stored na
 API POST/PUT/PATCH bodies under `/api/` are limited to 64 KiB. Logout uses a CSRF-protected native form and a provider redirect. Framework web/security/JDBC logging defaults explicitly to INFO even if a generic DEBUG environment flag is inherited; do not override these with personal data in use. Infrastructure and database logging need their own controls.
 
 [security.yml](../.github/workflows/security.yml) prepares secret scanning, npm audit, and public-PR dependency review; [Dependabot](../.github/dependabot.yml) covers Maven/npm/Actions updates. These workflows have not executed on GitHub. Dependency graph, native secret scanning/push protection, and complete Java advisory coverage require hosted verification. See [the final review](PHASE_1_CODEX_REVIEW.md) for exact test results and limitations.
+
+## Idempotent write retries
+
+The **guaranteed retry window** defaults to 24 hours through `palcheck.idempotency.ttl: PT24H` in backend application.yml (environment override `PALCHECK_IDEMPOTENCY_TTL`, or command argument `--palcheck.idempotency.ttl=PT48H`). The compatible property name means the retry guarantee, not permission to repeat an expired operation. Values below 24 hours fail startup; longer durations apply to newly completed writes without changing existing receipt deadlines. The duration is a product choice and can evolve through an explicit contract change.
+
+Within the window, an authorized retry with the same tenant/principal/operation/key and equivalent payload reconstructs the current representation of the prior logical result without repeating the write. A materially different payload conflicts. After the window, the original receipt may be deleted while its business effect remains. Reconcile the outcome before another action; do not infer safe or equivalent repetition. Exact boundary, status/header, normalization and purge semantics are in the [API contract](PHASE_1_IMPLEMENTATION_PLAN.md#guaranteed-retry-window-api-contract-and-configuration).
+
+## Phase 2 simulation walkthrough
+
+Start the backend with the `dev` profile and sign in as the synthetic Acme HR administrator. The dev seeder idempotently adds the fictional Northwind reference legal entities and Engineering/Support units required by the simulation, including in an existing dev tenant. No existing Person is modified by this seed step.
+
+1. Open **Enterprise Systems**, then **Workday Simulation**. This is an in-process reference simulation, with no live provider connection or credentials.
+2. Select **Baseline workers** and **Run sync**. A fresh tenant gets 6 processed records, 4 created workers and 3 failed outcomes: two worker imports and one manager link on an otherwise imported worker. The seven outcome rows are intentional; the page explains the distinction.
+3. Inspect a failed item, then open worker **W-1002**. Employment/Assignment say **Managed by Workday Simulation** and have no local edit action. Identity remains editable. Open Assignment **View source** to see `Business_Title` mapped to `assignment.title`, the worker reference, mapping version and recorded run.
+4. Return to the system and choose the changed-title scenario. Run sync: one title updates to **Senior Support Analyst**, with history attributed to **Workday Simulation**. Repeating that scenario produces four unchanged workers and no duplicates. Choosing baseline again intentionally restores the original title.
+5. Sign in as HR Viewer to verify Systems navigation and source disclosure are unavailable. Server permissions also reject direct integration requests.
+
+Scenario selection is enabled by the backend only for `dev`/`test`; the normal baseline POST remains available to an authorized administrator. It selects a fixture for that one pull, not a global provider mutation. Each POST creates a new run. Sync effect idempotency is independent of Phase 1's request-key receipt window.
+
+The backend runs the small pull synchronously; there is no background job or percentage progress. If a response is lost, inspect history before another run. Workforce/audit commits are per worker, followed by separate outcome/lineage writes; process/database failure can leave incomplete run evidence. See the [Phase 2 review](PHASE_2_CODEX_REVIEW.md) for exact limits and final test evidence.

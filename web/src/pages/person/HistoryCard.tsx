@@ -4,6 +4,7 @@ import type { AuditChange, AuditEntry } from '../../api/types'
 import type { MessageId } from '../../i18n/en'
 import { useT, type Translate } from '../../i18n/useT'
 import { useFormat } from '../../lib/format'
+import { RecordSection } from '../../components/RecordSection'
 
 const FIELD_LABELS: Record<string, MessageId> = {
   firstName: 'field.firstName',
@@ -58,10 +59,7 @@ export function HistoryCard({ personId }: { personId: string }) {
   const groups = groupByChangeSet(query.data?.pages.flatMap((p) => p.items) ?? [])
 
   return (
-    <section className="card" aria-labelledby="history-heading">
-      <div className="card__header">
-        <h2 id="history-heading">{t('person.section.history')}</h2>
-      </div>
+    <RecordSection id="history-heading" title={t('person.section.history')}>
 
       {query.isPending ? (
         <p role="status" className="muted">
@@ -80,15 +78,14 @@ export function HistoryCard({ personId }: { personId: string }) {
           {groups.map((group) => {
             const first = group.entries[0] as AuditEntry
             const created = first.operation === 'CREATE'
-            const title = created ? t('history.created') : t(`history.updated.${first.entityType}`)
+            const title = first.actor.type === 'SYSTEM' ? t(created ? 'history.imported' : 'history.synchronized') : created ? t('history.created') : t(`history.updated.${first.entityType}`)
             const changes = group.entries.flatMap((e) => e.changes)
             return (
               <li key={group.id} className="history__item">
-                <h3 style={{ fontSize: 'var(--text-body)', letterSpacing: 0 }}>{title}</h3>
+                <time className="history__time" dateTime={first.occurredAt}>{format.dateTime(first.occurredAt)}</time>
+                <h3 className="history__title">{title}</h3>
                 <p className="history__meta">
-                  {t('history.actor', { actor: first.actor.type === 'SYSTEM' ? t('history.system') : first.actor.displayName })}
-                  {' · '}
-                  <time dateTime={first.occurredAt}>{format.dateTime(first.occurredAt)}</time>
+                  {first.actor.type === 'SYSTEM' ? t('history.source', { source: first.actor.displayName }) : t('history.actor', { actor: first.actor.displayName })}
                 </p>
                 {first.reason ? <p className="small secondary">{t('history.reason', { reason: first.reason })}</p> : null}
                 {created ? (
@@ -112,7 +109,7 @@ export function HistoryCard({ personId }: { personId: string }) {
           </button>
         </div>
       ) : null}
-    </section>
+    </RecordSection>
   )
 }
 
@@ -129,7 +126,10 @@ function ChangeList({ changes }: { changes: AuditChange[] }) {
           <li key={`${change.field}-${index}`}>
             {/* Screen readers get a sentence; sighted users get the compact arrow form. */}
             <span className="visually-hidden">{t('history.changeFrom', { field: label, before, after })}</span>
-            <span aria-hidden="true">{t('history.change', { field: label, before, after })}</span>
+            <span className="history__change" aria-hidden="true">
+              <span className="history__field">{label}</span>
+              <span className="history__values"><span className="history__before">{before}</span><span className="history__arrow">→</span><span>{after}</span></span>
+            </span>
           </li>
         )
       })}

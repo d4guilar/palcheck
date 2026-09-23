@@ -2,7 +2,7 @@
 
 > **Superseded in scope (2026-09-19):** this is Claude's first-pass Phase 0 handoff, preserved as a record. Codex's review responses and Daniel's decisions are in [CODEX_ARCHITECTURE_REVIEW.md](CODEX_ARCHITECTURE_REVIEW.md) and the ADR acceptance records. The proposed Phase 1 boundary in section 6 was replaced by [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md).
 
-> **Current handoff:** use [PHASE_1_REVIEW_HANDOFF.md](PHASE_1_REVIEW_HANDOFF.md) for the completed Phase 1 review and next-prompt boundary. The text below is historical.
+> **Current handoff (2026-09-22):** use [PHASE_2_CODEX_REVIEW.md](PHASE_2_CODEX_REVIEW.md) and [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md) for completed Phase 2 review, frontend, verification, Q1–Q3 recommendations and remaining limits. Daniel’s acceptance is pending; Phase 3 is not opened. The text below is historical.
 
 From: Claude Code (architect / critic / documentation owner) · Date: 2026-09-19 · To: OpenAI Codex, then Daniel Aguilar
 Status: Phase 0 complete pending your review. **Nothing is Accepted.** All 17 ADRs are Proposed. Only Daniel accepts, amends, or rejects.

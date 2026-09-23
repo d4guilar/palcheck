@@ -28,6 +28,7 @@
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
+  --weight-title: 650;
 
   /* Spacing (4px base, expressed in rem so it scales with the user's text size). */
   --space-1: 0.25rem;
@@ -38,28 +39,36 @@
   --space-6: 2rem;
   --space-7: 3rem;
   --space-8: 4rem;
-  --gutter: clamp(1rem, 4vw, 2rem);
+  --gutter: clamp(1rem, 4vw, 3rem);
   --content-width: 72rem;
   --form-width: 48rem;
-  --rail-width: 14rem;
+  --record-width: 62rem;
+  --section-rail: 10rem;
+  --detail-label-width: 10rem;
+  --icon-size: 1.125rem;
+  --status-dot: 0.375rem;
+  --rail-width: 13rem;
   --section-title: 1.25rem;
-  --avatar-size: 2.5rem;
-  --profile-size: 4rem;
-  --search-width: 28rem;
+  --avatar-size: 2.25rem;
+  --profile-size: 3.5rem;
+  --search-width: 19rem;
   --elevation-soft: 0 2px 8px rgb(0 0 0 / 0.04);
 
-  --radius-sm: 0.375rem;
+  --radius-sm: 0.5rem;
   --radius-md: 0.625rem;
-  --hit-target: 2.75rem;
+  --hit-target: 2.25rem;
+  --touch-target: 2.75rem;
 
-  --duration-fast: 120ms;
+  --duration-fast: 160ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   /* Color: light */
-  --color-bg: #ffffff;
-  --color-bg-subtle: #f6f7f9;
+  --color-bg: #fafbfc;
+  --color-bg-subtle: #f0f2f5;
   --color-surface: #ffffff;
-  --color-border: #dcdfe4;
+  --color-elevated: #ffffff;
+  --color-selected: #e1e5eb;
+  --color-border: #e2e5e9;
   --color-border-strong: #7a828d;
   --color-text: #16191d;
   --color-text-secondary: #464c55;
@@ -82,11 +91,13 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg: #101215;
-    --color-bg-subtle: #16191d;
-    --color-surface: #181b20;
-    --color-border: #2c3138;
-    --color-border-strong: #6b7380;
+    --color-bg: #1b1d21;
+    --color-bg-subtle: #22252a;
+    --color-surface: #24272c;
+    --color-elevated: #2c3036;
+    --color-selected: #343a43;
+    --color-border: #393e45;
+    --color-border-strong: #828b98;
     --color-text: #eef0f3;
     --color-text-secondary: #b6bcc6;
     --color-text-muted: #98a0ab;
@@ -108,11 +119,13 @@
 }
 
 :root[data-theme="dark"] {
-  --color-bg: #101215;
-  --color-bg-subtle: #16191d;
-  --color-surface: #181b20;
-  --color-border: #2c3138;
-  --color-border-strong: #6b7380;
+  --color-bg: #1b1d21;
+  --color-bg-subtle: #22252a;
+  --color-surface: #24272c;
+    --color-elevated: #2c3036;
+    --color-selected: #343a43;
+  --color-border: #393e45;
+  --color-border-strong: #828b98;
   --color-text: #eef0f3;
   --color-text-secondary: #b6bcc6;
   --color-text-muted: #98a0ab;

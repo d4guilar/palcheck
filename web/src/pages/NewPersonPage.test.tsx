@@ -54,6 +54,9 @@ describe('New person', () => {
     await screen.findByRole('option', { name: /Demo Servicios/ })
     expect(screen.getByLabelText('First name')).toBeRequired()
     expect(screen.getByRole('group', { name: 'Employment' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Employment type')).toHaveAccessibleDescription(
+      'Software classification used by PalCheck. Local legal interpretation may vary by country.',
+    )
     expect(await axe(container)).toHaveNoViolations()
   })
 

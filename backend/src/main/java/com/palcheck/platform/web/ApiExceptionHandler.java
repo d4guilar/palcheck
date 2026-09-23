@@ -3,6 +3,7 @@ package com.palcheck.platform.web;
 import com.palcheck.shared.ApplicationException;
 import com.palcheck.shared.ConflictException;
 import com.palcheck.shared.ErrorCode;
+import com.palcheck.shared.ExternallyOwnedException;
 import com.palcheck.shared.ValidationException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.sql.SQLException;
@@ -46,6 +47,12 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     ResponseEntity<Object> conflict(ConflictException ex, HttpServletRequest request) {
         return respond(problems.build(request, HttpStatus.CONFLICT, ErrorCode.CONFLICT, ex.getMessage(), null,
                 ex.currentVersion()));
+    }
+
+    @ExceptionHandler(ExternallyOwnedException.class)
+    ResponseEntity<Object> externallyOwned(ExternallyOwnedException ex, HttpServletRequest request) {
+        return respond(problems.build(request, ProblemWriter.statusFor(ErrorCode.EXTERNALLY_OWNED),
+                ErrorCode.EXTERNALLY_OWNED, ex.getMessage(), null, null, ex.ownedBySystem()));
     }
 
     @ExceptionHandler(ApplicationException.class)

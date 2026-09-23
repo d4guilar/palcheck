@@ -73,6 +73,8 @@ function focusOnMount(node: HTMLDivElement | null) {
 
 function message(failure: Exclude<Failure, { kind: 'validation' | 'conflict' }>, t: Translate): string {
   switch (failure.kind) {
+    case 'externally-owned':
+      return t('source.editRefused')
     case 'forbidden':
       return t('form.errors.forbidden')
     case 'network':

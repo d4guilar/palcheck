@@ -80,6 +80,15 @@ class DemoDataSeeder implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         seedAcme();
         seedGlobex();
+        for (String slug : new String[] {"acme", "globex"}) {
+            var tenant = tenants.findTenantBySlug(slug).orElseThrow().id();
+            for (String[] data : new String[][] {{"Northwind Costa Rica S.A.", "CR"}, {"Northwind Panama S.A.", "PA"}}) {
+                if (reference.legalEntities(tenant).stream().noneMatch(e -> e.name().equals(data[0]))) entity(tenant, data[0], data[1]);
+            }
+            for (String name : new String[] {"Engineering", "Support"}) {
+                if (reference.orgUnits(tenant).stream().noneMatch(u -> u.name().equals(name))) unit(tenant, null, name);
+            }
+        }
     }
 
     private void seedAcme() {

@@ -50,7 +50,7 @@ public class EditPersonService {
         this.clock = clock;
     }
 
-    /** @param idempotencyKey optional; when present a repeat of the same request returns the original outcome */
+    /** @param idempotencyKey optional; same-scope retries in the guaranteed window do not repeat the edit */
     @Transactional
     public Result update(Actor actor, UUID personId, long expectedVersion, PersonPatch patch, String reason,
             String idempotencyKey) {

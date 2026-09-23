@@ -396,3 +396,385 @@ Public source visibility does not establish production readiness. Previously rec
 ### Suggested next step
 
 Review GitHub Actions results and use the repository link on the portfolio. Continue only the separately authorized Phase 1 acceptance/publication-validation scope; do not infer authorization for Phase 2 or a public application deployment.
+
+## 2026-09-21 08:49 — CODEX
+
+### Task
+
+Record Daniel's explicit acceptance of Q1, using its exact wording in PHASE_1_IMPLEMENTATION_PLAN.md, and verify that the existing implementation matches. No Phase 2 work.
+
+### Work completed
+
+- Q1 is ACCEPTED on 2026-09-21: **Spring JDBC over JPA, backend OIDC session over browser-held tokens, Maven with packages and ArchUnit instead of Spring Modulith, embedded PostgreSQL for tests while no container runtime is available, row-level security deferred.**
+- Updated the Phase 1 plan, review and handoff, ARCHITECTURE.md, SECURITY.md, and the ADR index. Added a dated resolution notice to the historical CODEX_ARCHITECTURE_REVIEW.md so its original recommendations cannot override the accepted choices.
+- ADR-0022 now records acceptance of the Q1 scope of decisions 1, 3, 7, 9 and 10, with implementation evidence. ADR-0020 decisions 4 and 5 and its decision 6 RLS-deferral portion reflect that acceptance. Related ADR-0003 (RLS), ADR-0009 (browser session) and ADR-0013 (authentication) have explicit scoped acceptance notes and current wording.
+- Inspected Maven dependencies/wrapper, package boundaries and ArchitectureTest, JdbcClient repositories, SecurityConfig and same-origin frontend proxy/session behavior, TestPostgres and integration tests, and migrations/tenant-qualified constraints. Implementation already matches all five choices; no application, configuration, migration, test or source-comment changes were required.
+
+### Decisions made
+
+Acceptance is scoped to Q1. ADR-0022 contains other choices, so it is Accepted in part with each Q1 choice explicitly ACCEPTED; this does not accept Q2's idempotency policy or Q3's vocabulary. The embedded-PostgreSQL condition and RLS reconsideration triggers are retained.
+
+The inventory also found provisional references outside Q1: ADR-0018 decisions 5–7 and their DOMAIN_MODEL/plan/migration comments, ADR-0020's other focused-precondition and local-environment details, and ADR-0023. Those were left unchanged. Existing neutral references in README, LOCAL_DEVELOPMENT, ROADMAP, pom.xml, PalCheckApplication, SecurityConfig, TestPostgres and vite.config.ts already match Q1 and needed no edits. Earlier WORKLOG entries remain append-only history; this entry supersedes their Q1-open status.
+
+### Tests
+
+Ran existing focused verification: `backend/mvnw.cmd -B -ntp -Dtest=ArchitectureTest -Dit.test=OidcLoginFlowIT,TenantIsolationIT,WorkforceSchemaIT verify`. **32 tests passed:** 15 architecture checks, 3 OIDC integration tests, 4 tenant-isolation integration tests and 10 schema integration tests against real embedded PostgreSQL. Zero failures, errors or skips; Maven BUILD SUCCESS. No tests were added or changed because observable behavior did not change. Full frontend/E2E suites were not rerun for this documentation-only resolution.
+
+Documentation verification includes local-link checks, a search for stale Q1 approval wording, Git whitespace checks, and confirmation that the diff contains only documentation and this appended entry.
+
+### Assumptions
+
+Daniel's Q1 acceptance applies to the five choices listed in that question; it does not automatically accept every decision mentioned elsewhere in ADR-0022 or complete Phase 1.
+
+### Open questions
+
+No residual ambiguity in Q1's five choices. Q2 and Q3, unrelated provisional ADR decisions, overall Phase 1 acceptance, licensing and production identity-provider/deployment choices retain their existing status.
+
+### Risks
+
+Accepted RLS deferral does not mean RLS is implemented or permanently rejected. Embedded PostgreSQL remains conditional on the container-runtime constraint. This status change does not close existing production-readiness or broader verification gaps.
+
+### Suggested next step
+
+Daniel resolves Q2 or Q3 separately. Preserve the accepted Q1 baseline; do not begin Phase 2.
+
+## 2026-09-21 09:11 — CODEX
+
+### Task
+
+Record Daniel's Q2 ACCEPTED WITH AMENDMENT decision and enforce/document the 24-hour GUARANTEED RETRY WINDOW without implying that receipt expiry makes a business action safe to repeat.
+
+### Work completed
+
+- Read the plan's exact Q2 wording, review/handoff, ADR-0019/0022, API documentation, receipt service/schema/purge, all write callers/fingerprints and existing idempotency tests. Preserved uncommitted Q1 edits and append-only worklog history.
+- Updated Q2 status in the plan/API contract, review, handoff, ADR-0022 and ADR index; added the Phase 1 boundary note to ADR-0019. Updated README, architecture/security references and local-development configuration guidance. Q3 stays open; no other owner decision was inferred.
+- Retained scope `(tenant, authenticated principal, operation, key)`, canonical payload fingerprints, required-create/optional-patch headers, deterministic 422 payload conflicts, transactional receipts/audit, concurrent reservation behavior and current-resource replay with current authorization.
+- Renamed the Java duration to guaranteedRetryWindow and removed comments suggesting expiry means safe reuse. Kept the compatible `palcheck.idempotency.ttl` setting, now explicit as PT24H in application.yml, and unchanged database retention column/index names. Existing migrations are untouched.
+
+### Decisions made
+
+During the guaranteed window, an authorized equivalent same-scoped-key retry reconstructs the original logical result without another business/audit mutation; a materially different request conflicts. Replays do not refresh the deadline. Cleanup uses strict comparison, retaining protection at the exact deadline.
+
+Two small corrections were necessary: reject configured durations below 24 hours, and set the original receipt's deadline no earlier than completion plus the configured window, so time executing the original write does not shorten that guarantee. The 24-hour duration is a product choice balancing predictable interruption recovery with bounded receipt storage; longer durations remain configurable. Changing settings does not rewrite stored deadlines. A future shorter published guarantee requires an explicit contract change.
+
+After the window, receipt availability is not guaranteed. Purge/lazy cleanup can remove the receipt while the original resource and audit remain. A later request undergoes normal rules and can be rejected or create another resource; callers must reconcile outcomes and must not assume equivalent or safe repetition. This does not implement permanent business-effect identity or any distributed platform/read-operation idempotency.
+
+### Tests
+
+New IdempotencyServiceTest: three cases reject negative, zero and sub-24-hour configuration; one accepts an extended 48-hour window. IdempotencyIT adds five tests: pre-boundary/exact-boundary replay and mismatch with purge/current representation/no extension; delayed original completion; post-window replay of an identical body creating another resource after legitimate data changes; tenant/operation scope; concurrent different-payload collision. Updated the prior expiry test's name and clock control to describe loss of receipt availability rather than safe key reuse. Existing same-key concurrency, principal scope, canonicalization, rollback, edit and audit tests remain.
+
+Before correction, the three minimum-window cases failed and the real-PostgreSQL delayed-completion regression returned Fresh instead of Replay. A mocked-clock UTC-conversion omission was fixed before the valid regression run. A Windows lock on the running application's executable JAR prevented repackaging; verification was rerun with only that packaging step skipped, without stopping unrelated services.
+
+Final command: `backend/mvnw.cmd -B -ntp -Dspring-boot.repackage.skip=true verify`. **164 tests passed (64 unit/architecture + 100 integration), zero failures/errors/skips; BUILD SUCCESS.** No frontend code changed; frontend/E2E suites were not rerun. Documentation links, whitespace and stale-Q2 wording are checked separately. No dependencies or tables were added.
+
+### Assumptions
+
+The existing authenticated-principal namespace remains part of the current implementation contract; Q2 does not authorize cross-principal deduplication. Successful original write completion is the receipt-completion point inside its business transaction; failed/rolled-back transactions leave no accepted effect or receipt. Retention uses the server's configured clock.
+
+### Open questions
+
+Q3 and other unrelated acceptance/release questions remain open. The guaranteed retry window is resolved; its future product duration can be changed deliberately. No permanent post-window safety inference is supported.
+
+### Risks
+
+After receipt removal an identical payload can produce another resource if present-day business constraints permit it; the tests demonstrate why callers must reconcile. Previously issued receipts keep their stored deadlines across configuration changes. Existing deployment/security/accessibility limitations remain separate from this change.
+
+### Suggested next step
+
+Daniel resolves Q3 separately. Keep Q1 and amended Q2 as the accepted baseline. No Phase 2 work, new distributed machinery or publishing action is part of this task.
+
+## 2026-09-21 09:50 — CLAUDE
+
+### Task
+
+Complete Q3 after Codex partial implementation. Q3 (ACCEPTED by Daniel, 2026-09-21): the employment vocabularies `PENDING` / `ACTIVE` / `ENDED` and `FULL_TIME` / `PART_TIME` are software/domain vocabulary, not Costa Rican legal classifications. Q1, Q2, Apple UI polish and Phase 2 were not touched.
+
+### Work completed
+
+- Inspected the working tree first. The repository is now under Git (two commits; the `.git` directory belongs to the Codex sandbox account, so Git reported "dubious ownership"; I used a per-command `-c safe.directory` for read-only status and diff and changed no Git configuration). Codex's uncommitted work covered Q1, Q2 and most of Q3; Codex wrote no Q3 worklog entry before stopping.
+- Verified Codex's Q3 edits are consistent with each other and with Daniel's decision, then closed the remaining gaps with small corrections (below).
+- Confirmed nothing else was needed: no OpenAPI or API description files exist (the plan's API section is the API documentation and already carries the Q3 note); the UI shows one short contextual hint on the Employment type field only and no legal warnings elsewhere; no enum value was renamed or added; no legal behavior exists.
+
+### Codex work preserved
+
+All of it was retained:
+- `EmploymentStatus.java` and `EmploymentType.java` Javadocs (substance kept; two phrases corrected, see below).
+- `docs/DOMAIN_MODEL.md`: new section 4.1 "Accepted Phase 1 employment vocabulary", OQ-06 reframed as future mappings, and the invariant reworded so an `ENDED` employment needing an end date is a software record-integrity rule, not a legal requirement.
+- `docs/localization/`: boundary note in `COUNTRY_POLICY_ARCHITECTURE.md`; the "Tipos de contrato" row in `costa-rica/GLOSSARY.md`; a note in `costa-rica/README.md`; a boundary note and the reworded WC-1 and WC-4 "Unblocks" entries in `costa-rica/RESEARCH_BACKLOG.md`.
+- Plan: Q3 status in section 4, the employment-vocabulary paragraph in section 8, and Q3 in section 16. ADR-0022: status line, the Q3 acceptance record and owner-resolution line; ADR index row. `PHASE_1_CODEX_REVIEW.md` section 21 and `PHASE_1_REVIEW_HANDOFF.md` owner-decision status.
+- Frontend: the reworded `field.employmentType.hint` in `en.ts` ("Software classification used by PalCheck. Local legal interpretation may vary by country."), the type comments in `web/src/api/types.ts`, and the two accessible-description assertions in `NewPersonPage.test.tsx` and `PersonDetailPage.test.tsx`.
+- Codex's completed but uncommitted Q1 and Q2 changes and their worklog entries were present in the same tree and were left exactly as found.
+
+### Decisions made
+
+- **"Placeholders" means "not legally authoritative", not "temporary".** Daniel's accepted label is "software/domain placeholders", but part of the wording (Javadocs saying "Phase 1 ... placeholder", the handoff saying "placeholders for Phase 1") read as if the values would be replaced. Kept the label (it is Daniel's) and defined it once, in `DOMAIN_MODEL.md` section 4.1: these are core PalCheck software vocabulary, deliberately legally neutral, may remain valid after Costa Rican localization exists (`FULL_TIME` can stay a PalCheck concept while a verified country policy later attaches local meaning or a mapping), and localized legal concepts live in the Country Policy layer, not in these enums.
+- **Corrections to Codex work** (each the smallest change that fixes a concrete problem):
+  1. Both enum Javadocs: replaced "Phase 1 software/domain placeholder" with "Core PalCheck software/domain ... vocabulary ... Deliberately legally neutral"; the rest of Codex's text kept, still concise.
+  2. `DOMAIN_MODEL.md` section 4.1: added the definition above and changed "automatically replace" to "necessarily replace", matching the decision that research may refine mappings without necessarily replacing core values.
+  3. Plan definition-of-done row 19 and the section 17 limitations bullet, `PHASE_1_REVIEW_HANDOFF.md`, and `LOCAL_DEVELOPMENT.md`: reworded from "software placeholders" to "core software/domain vocabulary, deliberately legally neutral (Q3 accepted)".
+- **Deliberately not edited:** `V3__workforce_core.sql` (its comment calls the values "software placeholders"; changing any migration file, even a comment, changes its Flyway checksum and would fail validation on existing databases, and the comment is not misleading); `EmploymentDataTest` Javadoc (already neutral); historical or conceptual mentions of "worker type" in `CODEX_HANDOFF.md`, `INTEGRATION_ARCHITECTURE.md`, `MODULES.md` and DOMAIN_MODEL section 3 (Phase 0 conceptual model or a superseded handoff, not the Phase 1 enums; section 4.1 states the boundary).
+- No values renamed, none added. `PeopleCreateAndReadIT` already asserts an unlisted type (`CONTRACTOR`) is rejected as invalid.
+
+### Tests
+
+- Backend, focused on the employment vocabulary plus architecture rules: `backend/mvnw.cmd -B -ntp -Dspring-boot.repackage.skip=true -Dtest=EmploymentDataTest,ArchitectureTest -Dit.test=PeopleCreateAndReadIT,PeopleEditIT,WorkforceSchemaIT,WorkforceRepositoryIT,DemoDataSeederIT,AuditIT verify`: **75 tests passed (23 unit and architecture, 52 integration on real PostgreSQL), zero failures, errors or skips; BUILD SUCCESS.** (The repackage step was skipped only because a running application can lock the executable JAR, as Codex found earlier.)
+- Frontend (its Q3 hint text and tests were previously unverified): `npm run typecheck`, `npm run lint` clean; **94 of 94 component tests passed**, including the two assertions that the employment-type hint is the field's accessible description.
+- Documentation: link and anchor check found no broken links in project documents (the section 4.1 anchor resolves); a search for temporary-sounding phrasing ("real taxonomy", "will be replaced", "until we discover") found none in the Q3 documents or code.
+- Not run: the full backend suite, the browser E2E suite and the production build. Changes to code are Javadoc text only, and the one UI text change is covered by the component tests above.
+
+### Assumptions
+
+- The label "software/domain placeholders" in the plan, ADR-0022, the review and the localization notes is Daniel's accepted wording and is intentionally kept; the definition in DOMAIN_MODEL section 4.1 governs how it is read.
+- The uncommitted tree (Q1, Q2 and Q3 work) is intended to be committed by Daniel or authorized separately; I created no commit.
+
+### Open questions
+
+None on Q3. Overall Phase 1 acceptance, licensing and hosting decisions remain separate and untouched. If Daniel prefers the label itself changed from "placeholders" to "core software vocabulary", that is a wording-only change across the files listed under "Codex work preserved".
+
+### Risks
+
+- The word "placeholders" remains in the accepted label and in `V3__workforce_core.sql`; a reader who skips DOMAIN_MODEL section 4.1 could still read it as temporary.
+- Hint text says local legal interpretation "may vary by country" but no country policy exists; that is accurate for now and states no legal fact.
+
+### Suggested next step
+
+Daniel reviews the Q3 wording and decides whether to commit the pending Q1, Q2 and Q3 changes. Do not begin Phase 2.
+
+## 2026-09-22 12:16 — CODEX
+
+### Task
+
+Phase 1 Apple-inspired UI polish.
+
+### Screens reviewed
+
+Inspected the running application before and after changes: sign-in, People directory/search/paging, person identity/employment/assignment, creation and all three inline editors, change history and disclosure, stale-edit conflict, loading, empty workspace, empty search, directory error and record error. Reviewed light/dark desktop and narrow layouts using synthetic data. The final capture pass scanned 16 states; browser tests also exercise 320px reflow, viewer restrictions, tenant denial and recovery. Staged visual error/conflict/empty/loading captures use browser-local responses; real behavior remains covered by the E2E suite.
+
+### Work completed
+
+- Refined the existing shell, typography, neutral surfaces, button hierarchy, search placement, compact status indicators and table spacing. Narrow directory rows retain role and team; forms and record labels stack naturally.
+- Introduced reusable SearchField and RecordSection components and a small useEditorFocus hook. Aligned identity/employment/history sections, removed duplicated headings/status, moved revision metadata into native disclosures, and simplified history field changes and record-load recovery copy. Existing draft/conflict, permission, search, paging, history and Q3 hint behavior is preserved.
+- Added shared tokens for content widths, selected/elevated surfaces, typography, control targets and layout dimensions. Dark mode now uses graphite layers. Retained native controls and system fonts with no new dependency.
+- Updated README and its four synthetic screenshots, docs/UI_SYSTEM.md, and the new docs/UI_PHASE_1_APPLE_POLISH.md report. Recorded Daniel's explicit acceptance of the functional Phase 1 foundation in AGENTS.md, the plan, review and handoff; the gate still permits only Phase 1 review work. Preserved all earlier Q1/Q2/Q3 edits and Claude's completed Q3 entry. No backend behavior, domain semantics, migration or Phase 2 feature changed in this task.
+
+### Design decisions
+
+Use original, restrained enterprise styling inspired by general Apple/HIG principles, with no Apple assets, proprietary fonts or copied OS chrome. Prefer typography, whitespace and separators to repeated cards. Keep native semantic controls. Revision details are one disclosure away; narrow rows prioritize name, role, team and status, with email/legal entity on the full record. These density choices are documented for Daniel's visual review.
+
+### Accessibility
+
+Retained explicit labels, accessible search descriptions, semantic table structure, inline errors, notices and visible focus. Opening each editor focuses its first control; closing restores its Edit button. Added keyboard disclosure/focus and narrow dark/forced-color journeys, plus 10 contrast checks for selected/elevated surfaces and control boundaries. Axe reported zero violations in the final 16-state capture pass under WCAG A/AA rules through 2.2. Human screen-reader testing and browsers other than Chrome on Windows remain unverified.
+
+### Tests
+
+Final results from web/: `npm run typecheck` and `npm run lint` passed; `npm test -- --maxWorkers=1 --reporter=verbose` passed **104 tests in 8 files**; `npm run build` passed TypeScript and the Vite production build. With `$env:PALCHECK_E2E_CHANNEL = 'chrome'`, `npm run e2e -- --output=.playwright/polish/final-e2e` passed **all 17 tests (3.5 minutes)**, including every existing critical journey. New browser coverage accounts for two tests; existing assertions were updated for toolbar order, metadata disclosure and record-error heading structure.
+
+The default browser output cleanup encountered Windows locks on live service logs, so final browser output uses a separate ignored directory. An earlier concurrent component run stalled and reported a ManagerPicker timing failure; the final full serial run passed. Final screenshot capture resets scroll position to avoid a sticky-sidebar artifact in full-page images. These required no backend changes. `backend/mvnw.cmd -B -ntp -DskipTests package` succeeded to prepare the local executable; backend tests were not rerun because this UI task changed no backend behavior. Git whitespace checks passed.
+
+### Assumptions
+
+Daniel's supplied UI brief explicitly accepts the functional Phase 1 foundation and authorizes this presentation pass. It does not accept additional ADR choices or open Phase 2. Existing synthetic local development services are used for verification.
+
+### Open questions
+
+No implementation blocker remains. Daniel can review record density, metadata disclosure and narrow directory priorities in the completed UI. Hosting, licensing and publication remain separate decisions.
+
+### Remaining visual issues
+
+Native selects/date inputs vary by platform; long history or multiple employments still produce a long page. Search help is available as an accessible description rather than a persistent caption. These are documented tradeoffs, not new functionality requests.
+
+### Risks
+
+Automated checks do not establish full accessibility conformance. Human screen-reader and cross-browser review remain necessary before broader release claims. The working tree contains earlier Q1/Q2/Q3 work as well as this pass; no commit or push was made during this UI task.
+
+### Suggested next step
+
+Daniel reviews the running UI and updated screenshots, then chooses a separate bounded release-validation or publication task. Preserve the accepted Phase 1 foundation and Q1/Q2/Q3 decisions; do not begin Phase 2.
+
+## 2026-09-22 13:33 — CLAUDE
+
+### Task
+
+Phase 2 opening: read the current implementation (post Q1-Q3 and UI polish, all still uncommitted), reconcile it against Daniel's Phase 2 message, and produce docs/PHASE_2_IMPLEMENTATION_PLAN.md plus its ADRs before writing any code.
+
+### Work completed
+
+- Re-inspected the working tree (`git -c safe.directory=... status/diff`; the `.git` directory is still owned by a different Windows account than mine, so I used a per-command exception and touched no Git config). The tree now carries Codex's Q1/Q2/Q3 resolutions and a full Apple-inspired UI polish pass (worklog entries through 2026-09-22 12:16), all still uncommitted; I changed none of it.
+- Read AGENTS.md, README, PHASE_1_IMPLEMENTATION_PLAN, PHASE_1_CODEX_REVIEW, PHASE_1_REVIEW_HANDOFF, ARCHITECTURE (section 11), MODULES (section 2a and 3.4), DOMAIN_MODEL, INTEGRATION_ARCHITECTURE (sections 1-9), DATA_OWNERSHIP_AND_LINEAGE (in full), SECURITY (section 5), ENTERPRISE_SYSTEMS (sections 1-3), and the current backend code: `access.api` (Actor, Authorization, Permission, TenantProvisioning), `audit.api` (AuditActor, AuditRecord, AuditRecorder), `shared` (ErrorCode, ApplicationException and its subtypes), `platform.web` (ApiExceptionHandler, ProblemWriter), and every `workforce` file a new module would need to reuse or extend (RegisterWorkerService, EditPersonService, EditEmploymentService, WorkforceAuditor, the domain records, the JDBC repositories, PeopleController/EmploymentController/Dtos, ArchitectureTest, the V3/V6 migrations).
+- Confirmed `docs/DATA_LINEAGE.md` named in Daniel's message does not exist; the Phase 0 document with that content was renamed `DATA_OWNERSHIP_AND_LINEAGE.md` and I read that instead.
+- Wrote [docs/PHASE_2_IMPLEMENTATION_PLAN.md](../PHASE_2_IMPLEMENTATION_PLAN.md) (20-item definition of done, scope, a reconciliation of this Phase 2 against the fuller Phase 0 integration design, architecture, persistence, API, authorization, audit, test strategy, step table, risks/open questions Q1-Q3), [ADR-0024](adr/0024-hris-adapter-boundary-phase2.md) (provider-neutral adapter boundary, the new `integrations` module, the new `workforce.api` write port) and [ADR-0025](adr/0025-ownership-lineage-and-sync-model-phase2.md) (ownership granularity, lineage storage, sync transaction model, two-pass manager resolution).
+- Updated AGENTS.md section 2 (phase gate now Phase 2, Phase 1 non-goals carried over, Phase 2's narrow exception to the Workday ban stated explicitly), the ADR index (0024/0025 rows, "not yet decided" list), ROADMAP.md (new Phase 2 section, reconciliation notice), and one-line reconciliation notices in INTEGRATION_ARCHITECTURE.md and DATA_OWNERSHIP_AND_LINEAGE.md pointing at the new plan and ADRs rather than rewriting either document.
+
+### Decisions made
+
+Recorded in the ADRs and the plan in full; summarized here:
+
+- **New module `integrations`**, depending only on `shared`, `platform`, `access.api`, `audit.api` and a **new public port on `workforce`**, `workforce.api` (`WorkforceImportPort`) — the only way `integrations` writes workforce data. `workforce` still never depends on `integrations`. No `messaging`/outbox is created; Phase 2 has no asynchronous effect to publish.
+- **Ownership granularity: Employment and Assignment, not per field, not Person, not tenant-configurable.** A deliberate, documented narrowing of `DATA_OWNERSHIP_AND_LINEAGE.md`'s fuller design (its open question LQ-02 stays open), chosen because Daniel's brief explicitly asked for "the least complex model that still demonstrates realistic behavior" and gave `Assignment.title` as the running example.
+- **Enforcement** lives in `workforce.application` (a human `PATCH` on an owned Employment/Assignment is rejected before any field is touched), not the UI; a new error code `EXTERNALLY_OWNED` (409) is added, distinct from optimistic-concurrency `CONFLICT`.
+- **Identity linking reuses the ownership columns** (a partial unique index on `(tenant_id, owned_by_system, external_worker_id)` where set) instead of a separate link table; one external worker maps to exactly one Employment.
+- **Legal entity mapping is a small code-defined map** (external company code -> legal entity name), resolved by `workforce.api` against existing legal entities by name; no new column on `workforce.legal_entity`.
+- **Sync transaction model**: one worker = one `workforce` transaction; the sync-item outcome is a separate transaction written afterward; a run is never one transaction. **Two passes** over a run's workers: pass 1 writes everything except the manager link, pass 2 resolves manager links now that every worker in the run exists.
+- **Audit**: the one change `WorkforceAuditor` needs is to accept the actor's kind instead of always assuming `USER`; a sync-caused change is recorded as the existing `AuditActor.system(name)`, no new `AuditActor.Type`.
+- **Field lineage** is separate, read-only metadata owned by `integrations` (one row per governed field naming its source), never consulted for write authorization.
+- This session's scope: plan + ADRs + a tested backend vertical slice (steps 3-9 of the plan). Frontend, lineage disclosure and E2E (steps 10-12) are the explicitly stated next step, matching how Phase 1's own backend-then-frontend split worked.
+
+### Tests
+
+None yet for Phase 2 — this entry covers planning only. Implementation and its tests follow in the next worklog entry, in the same session.
+
+### UI changes
+
+None in this entry.
+
+### Assumptions
+
+- Daniel's Phase 2 message is treated as his own authorization to open Phase 2 and to make the bounded implementation decisions above, the same way his Phase 1 opening message was treated, subject to the same kind of after-the-fact confirmation (Q1-Q3) Phase 1 used.
+- The large uncommitted tree from Codex's Q1/Q2/Q3 and UI-polish work is left exactly as found; Phase 2 code is written on top of it, not around it.
+
+### Open questions
+
+Q1-Q3 recorded in the plan section 14 (ownership granularity confirmation, permission bundling for the four new permissions, whether the Systems/Sync UI belongs inside `integrations` rather than the deferred `operations` module). Phase 1's own Q1-Q3 and the acceptance/publication-validation task from the review handoff remain separately open and untouched.
+
+### Risks
+
+Carried over from the plan section 14: the Employment/Assignment-only ownership model, single-employment-per-worker assumption, and synchronous (non-background) sync are documented simplifications that would need revisiting for a real second provider or real data volume.
+
+### Suggested next step
+
+Implement plan steps 3-9 (module skeleton, normalized contract, persistence, mock provider, import/reconciliation, ownership enforcement, audit+lineage) with backend integration tests on real PostgreSQL, then stop and report — matching this same session's continuation, not a separate one.
+
+## 2026-09-22 14:15 — CLAUDE
+
+### Task
+
+Phase 2 implementation steps 3–9: the `integrations` module, the `workforce.api` write port, persistence, the mock Workday provider, the two-pass import/reconciliation flow, ownership enforcement, and audit/lineage integration, with backend tests — the vertical slice this session commits to (docs/PHASE_2_IMPLEMENTATION_PLAN.md section 16).
+
+### Work completed
+
+- **New module `integrations`** (`domain`, `application`, `application.provider`, `infrastructure`, `web`; no `api` package yet — nothing outside it needs one). **New public port `workforce.api.WorkforceImportPort`**, implemented by a new `workforce.application.ImportWorkerService`, the only code allowed to write an externally owned Person, Employment or Assignment.
+- **Mock Workday adapter** (`integrations.application.provider`): `MockWorkdayProvider` (6 deterministic synthetic workers, provider-shaped vocabulary, package-private), `WorkdayMapper` (translates to PalCheck's own vocabulary, reports unmapped codes), `WorkdayAdapter` (the package's only public class; pulls and maps in one step so provider DTOs never leave the package). Three `WorkdayPullOptions` toggles reproduce a changed value, a source-side duplicate, and a temporary provider outage on request.
+- **Normalized contract**: `integrations.domain.NormalizedWorker` (small, integration-owned; PalCheck vocabulary strings, not `workforce.domain` enums, so it never forces `workforce` types across the module boundary) and `SyncFailureReason` (the five controlled failure classes).
+- **Persistence** (`V7__integrations_and_ownership.sql`): ownership columns on `workforce.employment` (`owned_by_system`, `external_worker_id`, `last_synced_at`) and `workforce.assignment` (`owned_by_system`, `last_synced_at`), with a partial unique index doubling as the external-identity lookup; `integrations.external_system`, `.sync_run`, `.sync_item`, `.field_lineage`. JDBC repositories for all of it.
+- **`SyncRunService`**: orchestrates one run — pull, dedupe within the pull, pass 1 (create/update/unchanged per worker, one `workforce` transaction each), pass 2 (manager links, now that every worker in the run exists), then one final `sync_run` write with aggregate counts. `ExternalSystemService` lazily provisions the one Phase 2 system row per tenant.
+- **Ownership enforcement**: `EditEmploymentService.updateEmployment`/`updateAssignment` reject a human edit of an owned record with a new `ExternallyOwnedException` (`ErrorCode.EXTERNALLY_OWNED`, HTTP 409, distinct from optimistic-concurrency `CONFLICT`, carrying the owning system's code).
+- **Audit and lineage**: `WorkforceAuditor` gained `createdBySystem`/`updatedBySystem` (the one change needed — everything else reuses the existing `AuditRecord`/`AuditActor.system(...)` machinery from Phase 1). `SyncRunService` writes `field_lineage` rows for the six fields a worker actually populates (person name/email, employment status/type, assignment title).
+- **API**: `GET /api/systems`, `GET /api/systems/{code}`, `POST /api/systems/{code}/sync`, `GET /api/systems/{code}/syncs`, `GET /api/syncs/{runId}`, `GET /api/people/{personId}/lineage`. Existing `Employment`/`Assignment` response DTOs gained `ownedBySystem`.
+- **Authorization**: four new permissions (`VIEW_SYSTEMS`, `VIEW_SYNCS`, `RUN_SYNC`, `VIEW_LINEAGE`), bundled into `HR_ADMIN` only (`Role.HR_ADMIN` already used `EnumSet.allOf`, so no change there; `HR_VIEWER` unchanged).
+- **ArchUnit**: 8 new rules (`workforceNeverDependsOnIntegrations`, `nothingOutsideIntegrationsUsesItsInternals`, `integrationsDependsOnlyOnItsAllowedNeighbours`, `providerVocabularyNeverLeavesTheAdapterPackage`, `integrationsDomainIsFrameworkFree`, `integrationsApplicationDoesNotKnowInfrastructureOrWeb`, `integrationsControllersNeverTouchRepositoriesOrSql`, `everyIntegrationsRepositoryMethodNamesATenant`), plus `integrations` added to the existing shared/platform/audit exclusion lists.
+- **Documentation**: docs/PHASE_2_IMPLEMENTATION_PLAN.md's definition-of-done table (rows 1–15, 18 marked done with evidence; 2, 17, 19, 20 marked partial — backend done, frontend/E2E/doc-cleanup pending) and implementation-steps table (3–9 marked done).
+
+### Decisions made
+
+Recorded in ADR-0024/0025 already; two things were discovered only while implementing, both fixed and worth recording:
+
+- **The manager link must never be diffed by the normal update path.** `ImportWorkerService`'s import request has no manager field (manager resolution is pass 2's job, via a separate `linkManager` call). The first version of `update()` built its comparison `AssignmentData` with `managerEmploymentId=null` unconditionally, so every re-sync of a worker who *had* a manager saw a false "changed" (null vs. the real value) and would have overwritten pass 2's link. Fixed by comparing against — and writing back — the assignment's *current* manager, untouched, whenever `importWorker` runs; only `linkManager` ever changes that field.
+- **Test isolation**: an early version of a cross-tenant test helper counted people by email without scoping to the tenant; since every test reuses the same fixed synthetic email addresses (deliberately, for realism), counts leaked across tenants created by earlier tests in the same class. Fixed by scoping every such query to the tenant under test.
+- **Audit actor display name**: `workforce` only ever receives the stable system *code* (`workday-simulation`), never a display name (`integrations` owns that, and `workforce` must not depend on `integrations`). `ImportWorkerService` translates the one Phase 2 code to "Workday Simulation" with one hardcoded, documented mapping, rather than leaving the raw code in the audit trail a human reads.
+- Nothing here changes the accepted architecture; no deviation needed an ADR beyond 0024/0025.
+
+### Tests
+
+All run on 2026-09-22 and passing: **187 backend tests** (72 unit and architecture, including the 8 new ArchUnit rules; 115 integration on real PostgreSQL, including the 15 new `SyncIT` tests) — `mvn verify` (repackage skipped; a running instance held the executable jar, same as Codex's Q2 note). `SyncIT` covers: first import (partial success — 4 created, 3 failed across pass 1 and 2, in one run); a synthetic worker findable in the directory; ownership stamped on Employment/Assignment; a human `PATCH` on an owned record rejected with `EXTERNALLY_OWNED`; idempotent re-sync (no duplicate, no audit noise, `updatedAt` unchanged); a changed source value updating only that field, audited as a `SYSTEM` actor named "Workday Simulation"; an unmapped legal entity failing cleanly with nothing created; an unresolved manager reference failing only that link, not the worker's own record; a resolved cross-worker manager link; field lineage naming the source system and field; a source-side duplicate within one pull rejected without a second person; a temporary provider failure never reaching `workforce`; cross-tenant isolation on syncs and lineage; the permission matrix (`HR_VIEWER` forbidden, `HR_ADMIN` allowed); and the same create/read/sync flow over real HTTP. Two pre-existing Phase 1 tests (`AuthenticationIT`, `AuthorizationMatrixIT`) had a hardcoded `HR_ADMIN` permission count (7); updated to 11, the correct count after adding four permissions — a expected, mechanical consequence of the new permissions, not a regression. Not run: frontend and E2E (nothing changed there yet).
+
+### UI changes
+
+None. Steps 10–12 (Systems/Sync screens, lineage disclosure, frontend and E2E tests) are explicitly deferred to the next piece of work.
+
+### Assumptions
+
+- Daniel's Phase 2 message authorizes the bounded design decisions in ADR-0024/0025 provisionally, the same way his Phase 1 opening message did for ADR-0022, subject to later confirmation (Q1–Q3 in the plan).
+- The uncommitted Q1/Q2/Q3 and UI-polish tree from the prior session is untouched by this work; Phase 2 code sits on top of it. No commit was made.
+- The mock provider's fixture legal entities ("Northwind Costa Rica S.A." / "Northwind Panama S.A.") and org units ("Engineering" / "Support") are Phase 2's own synthetic names, seeded by a new test-support `IntegrationsWorld`, independent of the dev seeder's "Acme" tenant; running a real sync against the seeded dev tenant would fail every worker on `UNKNOWN_LEGAL_ENTITY` until that tenant is given matching reference data or the code map is extended. Not wired up this round (no frontend/dev-run task needed it yet).
+
+### Open questions
+
+Q1–Q3 in the plan section 14 (ownership granularity, permission bundling, systems/sync UI living inside `integrations` rather than a future `operations` module). New: should the dev seeder gain matching legal entities/org units (or the code map gain Acme's names) before anyone runs a sync manually against the seeded tenant?
+
+### Risks
+
+Carried over from the plan: Employment/Assignment-only ownership (not Person, not per-field); one employment per external worker; synchronous (non-background) sync; the duplicate/temporary-failure scenarios are toggles on one fixture set, not independent fixtures. All documented, none blocking the stated Phase 2 goal.
+
+### Suggested next step
+
+Steps 10–13: the Systems list, Workday Simulation detail with a "Run sync" action and history, sync-run detail, a lineage disclosure on the Employment/Assignment cards (read-only when owned), frontend component tests, one end-to-end sync-then-view-lineage browser flow, and the remaining documentation cross-links (ARCHITECTURE, MODULES, DOMAIN_MODEL, README) — matching exactly how Phase 1's frontend followed its backend.
+
+
+## 2026-09-22 18:20 — CODEX
+
+### Task
+
+Phase 2 backend review + frontend completion.
+
+### Backend review
+
+Independently read the implementation, plan/ADRs, permissions, ownership, mapper, transaction boundaries, repositories, audit/lineage and tests. Verified Claude’s unchanged baseline first: 187 backend tests passed. Recorded P2-01 through P2-08 and the proposed constraint migration/summary endpoint in PHASE_2_CODEX_REVIEW.md before implementation. Preserved per-worker transactions, synchronous full pulls, stable external identity and the accepted module direction; no new dependency, table, module, broker or legal execution.
+
+### Q1–Q3 recommendations
+
+Read the exact questions from plan section 14. Recommend **ACCEPT** Q1 (Employment/Assignment ownership, not Person/per-field), **ACCEPT** Q2 (four independent permissions bundled into HR_ADMIN only), and **ACCEPT** Q3 (Systems/Sync UI inside integrations). These are reviewer recommendations consistent with Daniel’s preferences, not owner acceptance. ADR-0024/0025 remain Proposed; Phase 3 stays closed.
+
+### Frontend work
+
+Added Systems list, Workday Simulation detail/run action/history, direct-linkable run summary/items/failure detail, and lazy Employment/Assignment source disclosure under web/src/pages/integrations. Added permission-aware navigation/routes, typed PalCheck API client, ownership-aware edit controls, distinct EXTERNALLY_OWNED feedback and actual SYSTEM source attribution in person history. Added English catalog messages and small token-based style extensions. Development/test-only named fixture selection proves changed-source updates through the real API.
+
+### UI decisions
+
+Continue the existing native-control UI: quiet lists, typography, restrained text status, compact counts, native progressive disclosure and visible focus. Display simulation/last synchronization and actual run status, not fabricated health. Explain that failed outcomes include manager links on imported workers. Do not retry the mutation automatically after a lost response. Source metadata appears only on request with VIEW_LINEAGE; Person identity stays editable. Inspected desktop and 320px dark screenshots; corrected a malformed history arrow.
+
+### Tests
+
+- Baseline: 187 backend tests passed (72 unit/architecture + 115 PostgreSQL integration) before edits.
+- Final backend: mvnw.cmd -B -ntp verify passed, including executable JAR repackage: **192 tests**, 72 unit/architecture + 120 integration, **0 failures/errors/skips**, real embedded PostgreSQL.
+- Final frontend: typecheck, lint, production build passed; **114 tests in 9 files** passed. Ten new component tests cover systems, action/permissions, counts/failures, source disclosure, ownership and axe.
+- Final full-stack Chrome suite: **20/20 passed**, including all 17 previous flows and three new real Phase 2 flows (import/ownership/keyboard lineage; changed-source/re-sync/history; viewer denial). No core integration endpoint was mocked in these browser flows.
+- Additional visual verification: nine desktop/light and narrow/dark states passed axe with no detectable WCAG 2.2 AA violations and no horizontal page overflow. Existing keyboard/forced-colors/reduced-motion tests passed. Human screen-reader and other browsers remain unverified.
+- Five new backend regressions cover preserved local identity/initial provenance, manager clear/relink counts, summary/pagination/scenario/read permissions, concurrent imports and a real PostgreSQL trigger-induced worker transaction failure. Seeder assertions verify the additional fictional references remain idempotent.
+- Intermediate failures: a test-string encoding error and old seed-count assertion were corrected, then the full backend suite passed. First browser run was 19/20, with one existing test reporting an execution-context/navigation interruption during frontend edits; the final stable run passed all 20 without weakening assertions. Only docs/Javadoc changed after final application verification.
+- Document file links and backend XML result totals checked. Docker/Compose and hosted CI were not run.
+
+### Bugs found
+
+Dev tenants could not import the mock workers because reference data was absent; provider maps/display-name logic escaped the adapter; sync overwrote locally editable identity; manager clearing/current-pull membership/counting were inconsistent; unexpected worker errors aborted processing; concurrent imports could race; run pages had no summary API; pagination and metadata tenant constraints needed strengthening; RUN_SYNC depended on unrelated local permissions; the update scenario was unavailable through the real UI.
+
+### Bugs fixed
+
+Added idempotent synthetic Northwind references; moved provider interpretation into WorkdayMapper and passed source display name through the port; preserved Person on re-sync and its initial provenance; corrected null/unresolved/current-pull manager handling and update accounting; reused the existing tenant advisory transaction lock; recorded safe per-worker IMPORT_FAILED and attempted failed-run finalization for fatal errors; added authorized summary, bounded pagination and V8 tenant-qualified constraints (V7 unchanged); required RUN_SYNC at the port; exposed a dev/test-only TITLE_CHANGE scenario. Improved readable assignment/manager audit labels and rejected unsupported entity/date reconciliation. No unrelated Phase 1 behavior was redesigned.
+
+### Documentation
+
+Completed PHASE_2_CODEX_REVIEW.md with all 22 requested sections; reconciled the plan/DoD/API contract, Proposed ADR-0024/0025 and ADR index. Updated README, ARCHITECTURE, MODULES, DOMAIN_MODEL, INTEGRATION_ARCHITECTURE, DATA_OWNERSHIP_AND_LINEAGE, ENTERPRISE_SYSTEMS, ROADMAP, SECURITY, UI_SYSTEM, LOCAL_DEVELOPMENT demo steps and CODEX_HANDOFF. Clarified exact count/idempotency/ownership/provenance contracts and distinguished current implementation from historical future designs. Earlier worklog entries remain untouched.
+
+### Remaining limitations
+
+One in-process synthetic provider; synchronous full pulls; no live provider or network coverage. Workforce/audit commit before independent integration metadata writes, so process/database failure can leave a RUNNING run or missing/stale evidence. Re-sync reconciles owned values/current metadata but does not repair old run history or missing initial Person lineage. Concurrent different snapshots can interleave; no source ordering or durable recovery. Entity ownership only, six lineage fields, no audit sync-run foreign key, no ownership cutover/automatic merge/full temporal reconciliation. Existing deployment security and hosted-verification work remains. All pre-existing uncommitted Phase 1/Q1–Q3/UI-polish/Claude Phase 2 work was preserved; no commit or push performed.
+
+### Suggested next step
+
+Daniel reviews Q1–Q3 and ADR-0024/0025 and walks through baseline → changed title → source/history using LOCAL_DEVELOPMENT.md. Recommend Phase 2 acceptance within the documented limits, then a reviewed repository checkpoint. Public hosting first requires the already documented security milestone. Do not infer Phase 3 authorization.
+
+## 2026-09-22 18:29 — CODEX
+
+### Task
+Commit the completed Phase 2 milestone at Daniel's explicit request.
+
+### Work completed
+Reviewed pending files and prepared one milestone commit containing the completed Phase 2 backend/frontend/tests/documentation together with the preceding uncommitted Q1–Q3 resolutions and UI polish on which the verified application depends. Development runtime files and build outputs remain ignored.
+
+### Decisions made
+Commit title: Complete Phase 2 HRIS translation foundation. This repository checkpoint does not change the Proposed status of ADR-0024/0025 or open Phase 3. No push requested in this turn.
+
+### Tests
+No application behavior changed during commit preparation. Carried forward the completed verification: 192 backend tests, 114 frontend tests, 20 real-stack browser tests; typecheck, lint and production build passed. Check the staged diff for whitespace before committing.
+
+### Assumptions
+The requested Phase 2 commit captures the complete tested working state, including its prior review fixes.
+
+### Open questions
+Owner acceptance of Phase 2 Q1–Q3 and ADR-0024/0025 remains separate from committing the implementation.
+
+### Risks
+Known simulation and crash-recovery limits remain documented in PHASE_2_CODEX_REVIEW.md.
+
+### Suggested next step
+Review the milestone commit and complete the Phase 2 acceptance/demo walkthrough.

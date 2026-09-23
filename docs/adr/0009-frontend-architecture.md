@@ -1,6 +1,6 @@
 # ADR-0009: Frontend Architecture
 
-**Status:** Proposed
+**Status:** Accepted in part (Daniel Aguilar, Q1, 2026-09-21): decision 8's backend OIDC session choice is accepted; other proposals retain their prior status.
 **Date:** 2026-09-19
 
 > **Implementation note (2026-09-19):** Phase 1 built the frontend as decided in [ADR-0022](0022-phase1-technical-baseline.md) decision 11 (React, TypeScript, Vite, native controls first, CSS custom-property tokens, `react-intl`, TanStack Query, no component library) with a backend-managed session instead of browser-held tokens. Only the workforce screens exist; the operations console is not started. Original reasoning below is retained.
@@ -19,7 +19,7 @@ Both need strong accessibility, internationalization-readiness, locale-aware for
 5. **Tokens as the styling runtime**: CSS custom properties generated from a token file; light, dark, high-contrast, and forced-colors supported ([UI_SYSTEM.md](../UI_SYSTEM.md) 4). A utility-CSS framework is optional, not required.
 6. **Internationalization from the first component**: all user-visible strings externalized through an ICU-style message-format library (choice in Phase 1; e.g., FormatJS or i18next); `Intl` for dates, numbers, currency using the user's locale; **locale is presentation, jurisdiction is law** and they are separate inputs. Native legal terms come from the registry, not UI bundles.
 7. **Motion**: state-driven CSS for simple transitions; a spring-based library only for gesture-driven interactions (sheets, reorder) where interruptibility matters; `transform`/`opacity` only; reduced-motion variants required.
-8. **Authentication in the browser** follows [ADR-0013](0013-authentication.md); whether the SPA holds tokens (Authorization Code + PKCE, in memory) or a same-origin session mediates them (backend-for-frontend) is **open** (SQ-03 in [SECURITY.md](../SECURITY.md)). The lean is to evaluate the same-origin session first because it keeps tokens out of JavaScript for a data-sensitive product.
+8. **Authentication in the browser: ACCEPTED through Q1 on 2026-09-21.** Follow [ADR-0013](0013-authentication.md) and [ADR-0022](0022-phase1-technical-baseline.md) decision 7: a same-origin backend OIDC session keeps OAuth tokens out of application JavaScript. SQ-03 is resolved; no separate backend-for-frontend service is introduced.
 9. **Testing**: unit and component tests (Vitest and Testing Library are default candidates), end-to-end tests (Playwright), and automated accessibility checks (axe-class) in CI plus manual keyboard and screen-reader passes.
 10. **Contracts, not shared code**: `web/` consumes generated types; no Java/TypeScript code sharing.
 

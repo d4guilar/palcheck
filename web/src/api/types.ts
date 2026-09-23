@@ -8,6 +8,10 @@ export type Permission =
   | 'VIEW_EMPLOYMENT'
   | 'EDIT_EMPLOYMENT'
   | 'VIEW_AUDIT_HISTORY'
+  | 'VIEW_SYSTEMS'
+  | 'VIEW_SYNCS'
+  | 'RUN_SYNC'
+  | 'VIEW_LINEAGE'
 
 export interface SessionInfo {
   user: { id: string; displayName: string }
@@ -15,7 +19,9 @@ export interface SessionInfo {
   permissions: Permission[]
 }
 
+/** Phase 1 software/domain states, not legal classifications, eligibility or compliance (Q3 accepted). */
 export type EmploymentStatus = 'PENDING' | 'ACTIVE' | 'ENDED'
+/** Software/domain classifications; country-specific legal vocabulary stays separate. No statutory calculations. */
 export type EmploymentType = 'FULL_TIME' | 'PART_TIME'
 
 export interface Person {
@@ -71,6 +77,7 @@ export interface Manager {
 }
 
 export interface Assignment {
+  ownedBySystem?: string | null
   id: string
   title: string
   orgUnit: { id: string; name: string }
@@ -81,6 +88,7 @@ export interface Assignment {
 }
 
 export interface Employment {
+  ownedBySystem?: string | null
   id: string
   personId: string
   legalEntity: LegalEntity
@@ -135,6 +143,7 @@ export interface Problem {
     | 'TENANT_ACCESS_DENIED'
     | 'NOT_FOUND'
     | 'METHOD_NOT_ALLOWED'
+    | 'EXTERNALLY_OWNED'
     | 'CONFLICT'
     | 'IDEMPOTENCY_CONFLICT'
     | 'INTERNAL_ERROR'

@@ -50,12 +50,12 @@ final class Dtos {
     }
 
     record AssignmentDto(UUID id, String title, OrgUnitRefDto orgUnit, ManagerDto manager, LocalDate effectiveFrom,
-            long version, Instant updatedAt) {
+            long version, Instant updatedAt, String ownedBySystem) {
     }
 
     record EmploymentDto(UUID id, UUID personId, LegalEntityDto legalEntity, String status, String employmentType,
             String country, LocalDate startDate, LocalDate endDate, long version, Instant createdAt,
-            Instant updatedAt, AssignmentDto currentAssignment) {
+            Instant updatedAt, AssignmentDto currentAssignment, String ownedBySystem) {
     }
 
     record ActorDto(String type, UUID id, String displayName) {
@@ -100,11 +100,12 @@ final class Dtos {
                     a.manager() == null ? null
                             : new ManagerDto(a.manager().employmentId(), a.manager().personId(),
                                     a.manager().displayName()),
-                    a.assignment().effectiveFrom(), a.assignment().version(), a.assignment().updatedAt());
+                    a.assignment().effectiveFrom(), a.assignment().version(), a.assignment().updatedAt(),
+                    a.assignment().ownedBySystem());
         }
         return new EmploymentDto(e.id(), e.personId(), legalEntity(v.legalEntity()), e.data().status().name(),
                 e.data().employmentType().name(), e.data().country(), e.data().startDate(), e.data().endDate(),
-                e.version(), e.createdAt(), e.updatedAt(), assignment);
+                e.version(), e.createdAt(), e.updatedAt(), assignment, e.ownedBySystem());
     }
 
     static AuditEntryDto audit(AuditEntryView e) {

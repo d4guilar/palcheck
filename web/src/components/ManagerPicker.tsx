@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/endpoints'
 import { useT } from '../i18n/useT'
 import type { ControlProps } from './FormField'
+import { SearchField } from './SearchField'
 
 /** Paged employment search with native controls: no load-all list or custom keyboard model. */
 export function ManagerPicker({ control, value, onChange, selectedName, excludingEmploymentId }: {
@@ -38,8 +39,7 @@ export function ManagerPicker({ control, value, onChange, selectedName, excludin
           {t('manager.option', { name: item.displayName, title: item.title ?? t('person.assignment.none'), entity: item.legalEntityName, status: t(`status.${item.status}`) })}
         </option>)}
       </select>
-      <label className="field__hint" htmlFor={`${control.id}-search`}>{t('manager.search')}</label>
-      <input id={`${control.id}-search`} className="input" type="search" value={draft} maxLength={100}
+      <SearchField id={`${control.id}-search`} label={t('manager.search')} placeholder={t('people.search.placeholder')} value={draft} maxLength={100}
         autoComplete="off" onChange={(event) => setDraft(event.target.value)} />
       <div className="cluster cluster--between">
         <span className="small muted" role="status">{query.isError ? t('manager.error') : waiting ? t('app.loading') : t('manager.results', { count: query.data?.totalItems ?? 0 })}</span>

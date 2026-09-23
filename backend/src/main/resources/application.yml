@@ -27,6 +27,12 @@ spring:
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
 
+palcheck:
+  idempotency:
+    # Guaranteed retry window for original successful writes. Legacy property name retained for compatibility.
+    # ISO-8601 duration; startup rejects values below PT24H. Receipt cleanup does not make a resend safe.
+    ttl: PT24H
+
 server:
   port: 8080
   servlet:

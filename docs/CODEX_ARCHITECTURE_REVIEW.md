@@ -1,6 +1,8 @@
 # Codex Architecture Review
 
-Author: CODEX · Date: 2026-09-19 · Status: Phase 0 review; recommendations **Proposed**.
+Author: CODEX · Date: 2026-09-19 · Status: historical Phase 0 review; recommendations below record the original proposal.
+
+> **Q1 resolution (2026-09-21):** Daniel accepted JDBC, Maven/packages/ArchUnit, backend OIDC sessions, embedded PostgreSQL tests while no container runtime is available, and Phase 1 RLS deferral. [ADR-0022](adr/0022-phase1-technical-baseline.md#q1-acceptance-record-2026-09-21) records the binding scope. The original recommendations below are retained as historical reasoning; their proposed status and pre-schema RLS experiment do not override this acceptance.
 
 Daniel remains the final authority. This review does not accept ADRs, open Phase 1, or change his standalone-first decision. It reviews Claude's actual proposal, including Amendments A1–A5, rather than the superseded candidate architecture in the original brief. `DATA_LINEAGE.md` was intentionally replaced by [DATA_OWNERSHIP_AND_LINEAGE.md](DATA_OWNERSHIP_AND_LINEAGE.md).
 

@@ -7,7 +7,7 @@ import { Initials } from '../../components/Initials'
 import { Notice } from '../../components/Notice'
 import { PageTitle } from '../../components/PageTitle'
 import { ErrorState, LoadingState } from '../../components/States'
-import { StatusTag } from '../../components/StatusTag'
+import { RecordSection } from '../../components/RecordSection'
 import { useT } from '../../i18n/useT'
 import { useSession } from '../../session/sessionContext'
 import { EmploymentCard } from './EmploymentCard'
@@ -65,7 +65,7 @@ export function PersonDetailPage() {
             {t('person.notFound.body')}
           </p>
         ) : (
-          <ErrorState title={t('person.error.title')} onRetry={() => void person.refetch()} />
+          <ErrorState label={t('person.error.title')} body={t('person.error.body')} onRetry={() => void person.refetch()} />
         )}
       </div>
     )
@@ -88,7 +88,6 @@ export function PersonDetailPage() {
               </p>
             ) : null}
           </div></div>
-          {primary ? <StatusTag status={primary.status} /> : null}
         </div>
         <nav className="record-nav" aria-label={t('person.navigation')}>
           <a href="#identity-heading">{t('person.section.identity')}</a>
@@ -106,8 +105,7 @@ export function PersonDetailPage() {
       <IdentityCard person={record} canEdit={session.can('EDIT_PERSON')} onSaved={saved} />
 
       {session.can('VIEW_EMPLOYMENT') ? (
-        <section aria-labelledby="employment-heading" className="stack stack--tight">
-          <h2 id="employment-heading">{t('person.section.employment')}</h2>
+        <RecordSection id="employment-heading" title={t('person.section.employment')}>
           {employments.isPending ? <LoadingState message={t('app.loading')} /> : null}
           {employments.isError ? <ErrorState title={t('person.error.title')} onRetry={() => void employments.refetch()} /> : null}
           {employments.data && employments.data.length === 0 ? <p className="muted">{t('person.employments.none')}</p> : null}
@@ -119,7 +117,7 @@ export function PersonDetailPage() {
               onSaved={saved}
             />
           ))}
-        </section>
+        </RecordSection>
       ) : null}
 
       {session.can('VIEW_AUDIT_HISTORY') ? <HistoryCard personId={personId} /> : null}

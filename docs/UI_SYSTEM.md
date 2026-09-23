@@ -1,10 +1,36 @@
 # UI System
 
+> **Phase 2 implemented surfaces (2026-09-22):** Systems, system detail, run history/detail and contextual source disclosure extend the existing native-control UI under `web/src/pages/integrations`. Compact lists, subdued text statuses, native disclosure and existing spacing/color tokens replace dashboard decoration. Read-only ownership is visible beside the affected section; source metadata loads only on demand. Desktop and 320px dark layouts, keyboard disclosure and axe checks are recorded in the [Phase 2 review](PHASE_2_CODEX_REVIEW.md). No component library or new dependency was added.
+
 > **Reconciliation notice (2026-09-19, Phase 1 built):** the workforce foundation ships four screens: sign-in and session states, **People** (search, table, paging), **New person**, and the **person record** (identity, employment, assignment, change history, each part editable on its own). Sections 6 and 7 below are the Phase 0 proposal. What differs: no headless component layer was adopted (native form controls, table, links and buttons with a small token stylesheet were enough; the question returns when a dialog, combobox or date picker is needed); the **Hire** wizard, **Activity** and **Learn** screens are not built (they belong to later milestones); no ownership badges or masked fields yet (only synthetic data is used and everything is `PALCHECK`-owned; the modeled names/emails would be personal data in real use). Implemented from this document: semantic tokens with light, dark, high-contrast, forced-colors, reduced-motion and reduced-transparency support; native-term-first, plain-language messages in one catalog; errors that say what happened and what to do; the accessibility commitments in section 9, verified by automated checks in jsdom and a real browser (axe, WCAG 2.2 AA) plus a keyboard-only journey. Not verified: a manual screen-reader pass. See [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md) sections 10 and 17.
 
 Status: baseline **Proposed** ([ADR-0009](adr/0009-frontend-architecture.md), [ADR-0010](adr/0010-ui-principles-and-accessibility.md)); the Phase 1 UI is implemented (see the notice above). This document sets constraints and direction, not pixels.
 
 ## Implemented Phase 1 review refinements
+
+The dedicated [UI polish pass](UI_PHASE_1_APPLE_POLISH.md) builds on those refinements. PalCheck is inspired by general modern Apple/HIG design principles, but is an original enterprise web application, not an Apple product or replica. It uses the user's native system fonts, original CSS and a simple original search icon; it bundles no proprietary font, icon library or brand asset.
+
+The implemented direction is **clarity, restraint and hierarchy**: one directory toolbar; neutral surfaces; typography and aligned rows before borders; restrained semantic color; minimal navigation chrome. **Progressive disclosure** keeps revision metadata and initial audit details available without making them dominate ordinary record reading. **Accessibility** takes precedence over visual subtlety: native controls retain visible boundaries, focus rings, labels and associated error/help text. Controls are 36px minimum on fine-pointer desktops and 44px on narrow screens or coarse pointers. There is no custom modal, menu or keyboard model.
+
+Current record sections use a 160px heading column beside aligned label/value rows at wide desktop sizes. Smaller widths stack the heading and body; phone widths stack individual labels and values. The directory keeps a semantic table on desktop and becomes compact rows below 640px, retaining name, role, team and status. Legal entity and email remain available in the record. Status is text plus a small redundant colored dot, rather than repeated filled pills. History shows time, action, author and before/after values; each changed field no longer needs its own shaded rectangle.
+
+Current semantic tokens are CSS custom properties in `web/src/styles/tokens.css` (not generated JSON):
+
+| Role | Implemented tokens / values |
+|---|---|
+| Surfaces | `--color-bg` for the canvas, `--color-bg-subtle` for chrome/search, `--color-surface` for content, `--color-elevated` for focused controls; `--color-selected` for navigation |
+| Text | `--color-text`, `--color-text-secondary`, `--color-text-muted`; all retain AA contrast on their applicable surfaces |
+| Borders | `--color-border` for separators, `--color-border-strong` for control boundaries |
+| Semantic color | `--color-accent` / `--color-focus` for interaction; success, warning, error and neutral text/background pairs |
+| Type | Native system stack; 32px page titles at weight 650, 20px section headings, 15px body, 13px metadata; rem sizing |
+| Layout | 208px rail; 1152px directory, 992px record and 768px form maximum widths; 4px spacing base |
+| Shape / motion | 8px and 10px radii, circular small initials; restrained 160ms control feedback, reduced-motion override; no page animation or translucency dependency |
+
+Light mode uses an off-white canvas with clean content surfaces. Dark mode uses graphite/charcoal layers, a neutral selected-navigation surface and a slightly lighter focused-control surface. Increased contrast and forced colors retain visible boundaries and focus. Automated contrast coverage includes selected navigation, focused controls and search borders in both themes.
+
+Inline editors move focus to the first field on opening and return it to the matching Edit button on close. Conflict recovery preserves the existing explicit draft-replacement contract; no overwrite, automatic merge or changed API behavior is introduced. Search help remains an accessible description; employment-type contextual help retains the accepted Q3 wording.
+
+The paragraphs below describe the earlier review baseline; the dedicated report records current screenshots, test counts and remaining limitations.
 
 The [Codex review](PHASE_1_CODEX_REVIEW.md) refines the original implementation: compact neutral workspace/account rail with one People destination; purposeful search toolbar and initials; grouped record rows and contextual anchors; timeline history with readable changes; aligned native forms with bounded width; explicit conflict recovery preserving drafts. At narrow widths the rail becomes a header, secondary directory columns collapse, and forms use one column. No fake destination, proprietary Apple asset, bundled font, or icon dependency was added.
 

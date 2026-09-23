@@ -61,7 +61,7 @@ public class RegisterWorkerService {
         this.clock = clock;
     }
 
-    /** @param idempotencyKey required; a repeat of the same request returns the original result */
+    /** @param idempotencyKey required; same-scope retries in the guaranteed window reconstruct the original logical result */
     @Transactional
     public Result register(Actor actor, RegisterWorkerCommand command, String idempotencyKey) {
         Objects.requireNonNull(idempotencyKey, "idempotencyKey");

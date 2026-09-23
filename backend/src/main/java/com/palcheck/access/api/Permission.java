@@ -11,5 +11,10 @@ public enum Permission {
     EDIT_PERSON,
     VIEW_EMPLOYMENT,
     EDIT_EMPLOYMENT,
-    VIEW_AUDIT_HISTORY
+    VIEW_AUDIT_HISTORY,
+    /** Phase 2: the systems catalog, sync history, running a sync, and field lineage (docs/PHASE_2_IMPLEMENTATION_PLAN.md section 7). */
+    VIEW_SYSTEMS,
+    VIEW_SYNCS,
+    RUN_SYNC,
+    VIEW_LINEAGE
 }

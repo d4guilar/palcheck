@@ -1,8 +1,10 @@
 # Enterprise Systems (the Operations Console)
 
+> **Phase 2 current product (2026-09-22):** Enterprise Systems now opens a quiet systems list, Workday Simulation detail with authorized Run sync and paginated history, and a run detail with actual counts and inspectable failures. Employment/Assignment source disclosure links to its run. These surfaces live in `integrations`, not an operations module. Simulation mode and last synchronization are shown; no live health measurement is claimed. The broader operations console below remains a Phase 0 proposal. See the [Phase 2 plan](PHASE_2_IMPLEMENTATION_PLAN.md) and [review](PHASE_2_CODEX_REVIEW.md).
+
 > **Reconciliation notice (2026-09-19):** Phase 1 contains **no** operations console. [Review §14](CODEX_ARCHITECTURE_REVIEW.md#14-enterprise-systems-feature-prioritization) classification stands as the plan: audit activity is the only MVP capability (Phase 1); catalog, health, jobs, event explorer, retry and lineage belong to the provisioning and overlay milestones; topology, incidents, SLOs and replay are future. Baseline text is retained.
 
-Status: Phase 0 draft, **Proposed** ([ADR-0016](adr/0016-operations-model.md)) · Output of assignment step 9. Owning module: `operations` ([MODULES.md](MODULES.md) 3.7).
+Status: Phase 0 draft, **Proposed** ([ADR-0016](adr/0016-operations-model.md)) · Output of assignment step 9. Proposed future owning module: `operations` ([MODULES.md](MODULES.md) 3.7).
 Diagram: [08 operations topology](diagrams/08-ops-topology.md). Related: [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md), [DATA_OWNERSHIP_AND_LINEAGE.md](DATA_OWNERSHIP_AND_LINEAGE.md).
 
 ## 1. What it is

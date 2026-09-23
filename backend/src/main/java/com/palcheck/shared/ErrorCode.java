@@ -11,5 +11,7 @@ public enum ErrorCode {
     CONFLICT,
     IDEMPOTENCY_CONFLICT,
     PAYLOAD_TOO_LARGE,
+    /** A write targets a field or record an external system owns (Phase 2); distinct from optimistic-concurrency CONFLICT. */
+    EXTERNALLY_OWNED,
     INTERNAL_ERROR
 }

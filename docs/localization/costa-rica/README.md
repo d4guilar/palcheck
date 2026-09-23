@@ -23,6 +23,8 @@ any calculation; any compliance claim.
 
 ## How this connects to the product
 
+**Q3 ACCEPTED by Daniel on 2026-09-21 — SOFTWARE / DOMAIN PLACEHOLDERS:** Phase 1 employment status (`PENDING`, `ACTIVE`, `ENDED`) and type (`FULL_TIME`, `PART_TIME`) support software behavior only. They are neither complete nor legally authoritative Costa Rican categories, do not establish legal eligibility or compliance, and must not drive statutory calculations. Future research may require richer local classifications, mappings, metadata, country-policy concepts or different terminology, kept conceptually separate from the core values. See [the domain boundary](../../DOMAIN_MODEL.md#41-accepted-phase-1-employment-vocabulary) and WC-1/WC-4, WT-1 and TM-1 in the research backlog. This acceptance does not verify any legal concept.
+
 - Concepts will appear in the Legal Concept Registry ([../LEGAL_CONCEPT_REGISTRY.md](../LEGAL_CONCEPT_REGISTRY.md)) as `Concept` entries at `UNRESEARCHED`.
 - In Phase 1 they are shown as a read-only "Learn" glossary with honest status banners.
 - Research answers about *data shape* (worker types, identifiers, employer structures) come first, because they decide the domain model. Answers about *computation*

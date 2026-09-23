@@ -58,8 +58,8 @@ class DemoDataSeederIT {
         var globexActor = tenants.actorFor(tenants.findPrincipal(ISSUER, "c68bce61-0cf4-4792-bdd3-4789b998120f")
                 .orElseThrow().id());
         assertThat(queries.list(globexActor, null, 0, 100).totalItems()).isEqualTo(4);
-        assertThat(queries.legalEntities(actor)).hasSize(2);
-        assertThat(queries.orgUnits(actor)).hasSize(6);
+        assertThat(queries.legalEntities(actor)).hasSize(4);
+        assertThat(queries.orgUnits(actor)).hasSize(7);
     }
 
     @Test
@@ -86,7 +86,11 @@ class DemoDataSeederIT {
         var actor = tenants.actorFor(admin.id());
         long before = queries.list(actor, null, 0, 100).totalItems();
 
+        var entitiesBefore = queries.legalEntities(actor);
+        var unitsBefore = queries.orgUnits(actor);
         seeder.run(null);
+        assertThat(queries.legalEntities(actor)).isEqualTo(entitiesBefore);
+        assertThat(queries.orgUnits(actor)).isEqualTo(unitsBefore);
 
         assertThat(queries.list(actor, null, 0, 100).totalItems()).isEqualTo(before);
     }

@@ -6,6 +6,7 @@ test.describe('Workforce foundation, end to end', () => {
     await signInAs(page, users.acmeAdmin)
     await expect(page.getByText('Rebeca Umaña Salas', { exact: true })).toBeVisible()
     // Synthetic seed data is there.
+    await page.getByLabel('Search people').fill('Solis')
     await expect(page.getByRole('link', { name: 'Mariana Solís Vega' })).toBeVisible()
 
     const person = await createPerson(page)
@@ -62,6 +63,7 @@ test.describe('Workforce foundation, end to end', () => {
   test('a viewer can read records but has no way to change them', async ({ page }) => {
     await signInAs(page, users.acmeViewer)
     await expect(page.getByRole('link', { name: 'New person' })).toHaveCount(0)
+    await page.getByLabel('Search people').fill('Solis')
     await page.getByRole('link', { name: 'Mariana Solís Vega' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Mariana Solís Vega' })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Edit/ })).toHaveCount(0)
@@ -74,6 +76,7 @@ test.describe('Workforce foundation, end to end', () => {
   test('one tenant cannot see or open another tenant’s records', async ({ page, browser }) => {
     // Find an Acme person's record URL as the Acme administrator.
     await signInAs(page, users.acmeAdmin)
+    await page.getByLabel('Search people').fill('Solis')
     await page.getByRole('link', { name: 'Mariana Solís Vega' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Mariana Solís Vega' })).toBeVisible()
     const acmeRecordUrl = page.url()
