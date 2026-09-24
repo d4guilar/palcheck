@@ -14,6 +14,11 @@ spring:
             token-uri: http://idp.test.invalid/token
             jwk-set-uri: http://idp.test.invalid/jwks
             user-name-attribute: sub
+  kafka:
+    listener:
+      # Most tests never touch Kafka at all, so no @KafkaListener container should try to dial a broker that
+      # isn't running. A test that specifically exercises Kafka (embedded broker) overrides this back to true.
+      auto-startup: false
 
 server:
   servlet:
@@ -24,6 +29,13 @@ server:
 palcheck:
   idempotency:
     purge-enabled: false
+  messaging:
+    # Determinism over a wall-clock tick (same reasoning as idempotency.purge-enabled): tests call
+    # Publisher.publishEligible() directly instead of waiting for the scheduler.
+    publisher-enabled: false
+  integrations:
+    # Same reasoning: tests call OperationConsumer.retryDue(...) directly instead of waiting for the scheduler.
+    retry-enabled: false
 
 logging:
   structured:

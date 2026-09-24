@@ -26,12 +26,33 @@ spring:
             scope: openid,profile,email
             authorization-grant-type: authorization_code
             redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+  # Local Kafka (KRaft mode, native process — no Docker; see docs/LOCAL_DEVELOPMENT.md). Values are always strings
+  # on the wire: PalCheck serializes its own IntegrationEvent envelope to/from JSON itself (ADR-0026), so Kafka's
+  # (de)serializers never need to know about a PalCheck type.
+  kafka:
+    bootstrap-servers: ${PALCHECK_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Every consumer group starts from the beginning the first time it exists, rather than silently skipping
+      # everything published before its first connection — correct for Phase 3's small, replayable event volume.
+      auto-offset-reset: earliest
 
 palcheck:
   idempotency:
     # Guaranteed retry window for original successful writes. Legacy property name retained for compatibility.
     # ISO-8601 duration; startup rejects values below PT24H. Receipt cleanup does not make a resend safe.
     ttl: PT24H
+  messaging:
+    # Single topic for Phase 3's one integration event type (ADR-0026); versioned in its own name rather than a
+    # schema registry, so a breaking change ships as palcheck.workforce.events.v2 without touching this one.
+    topic: palcheck.workforce.events.v1
+    # Shared outbox-publisher and consumer retry schedule (ADR-0027 decision 4): a documented simplification, not
+    # a claim every future integration should reuse these numbers.
+    retry-delays: PT5S,PT30S,PT2M,PT10M
 
 server:
   port: 8080

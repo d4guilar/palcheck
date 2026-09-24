@@ -3,8 +3,10 @@
 > **Reconciliation notice (2026-09-19):** Daniel approved refinement 6 (smaller implementation milestones) and **opened Phase 1: Authenticated Workforce Foundation**. The order of milestones is now **foundation, then provisioning, then overlay** ([ADR-0020](adr/0020-foundation-first-delivery-plan.md), accepted in part). Claude's original hire-to-provision proposal is preserved below as the *provisioning milestone*. Numbering of milestones after Phase 1 is Daniel's to assign; nothing is silently renumbered. Detailed Phase 1 plan: [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md).
 >
 > **Reconciliation notice (2026-09-22):** Daniel **opened Phase 2: External HRIS Translation Foundation.** This is a narrower, inbound-only slice of what [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) called "Phase 2: reference HRIS" (section 8) — a mock Workday-shaped provider, an adapter and mapper, and a write path into `workforce` with ownership and lineage, but **no outbox, broker, downstream delivery or simulator** (those remain the deferred *outbound* half of that document, unchanged). It slots in immediately after the workforce foundation and before the *provisioning milestone* below, which keeps its original numbering and scope (numbering after Phase 2 is still Daniel's to assign). Detailed plan: [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md).
+>
+> **Reconciliation notice (2026-09-22, later the same day):** Daniel **opened Phase 3: Durable Events and Asynchronous Integration**, treating Phase 1 and Phase 2 as complete and accepted. Phase 3 builds the *outbound* half [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md) deferred when Phase 2 opened: a transactional outbox, a real (Kafka) broker, one published event (`EmploymentStarted`), and two idempotent downstream simulations (Identity Provisioning, Equipment Provisioning) with retry, dead-letter and replay. It slots in immediately after Phase 2 and before the *provisioning milestone* below. Detailed plan: [PHASE_3_IMPLEMENTATION_PLAN.md](PHASE_3_IMPLEMENTATION_PLAN.md).
 
-Status: **Phase 2 implemented and reviewed; awaiting Daniel’s acceptance (2026-09-22).** Phase 1 is implemented and accepted; evidence against its definition of done is in [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md) section 1, known limitations in section 17. The independent [Codex Phase 1 review](PHASE_1_CODEX_REVIEW.md) is complete; [the handoff](PHASE_1_REVIEW_HANDOFF.md)'s acceptance/publication-validation recommendation remains a separate, not-yet-started task. Only Daniel opens a phase. Everything after Phase 2 is a plan, not a commitment.
+Status: **Phase 3 open (2026-09-22).** Phase 1 and Phase 2 are implemented and accepted; evidence against their definitions of done is in [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md) section 1 and [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md) section 1. Only Daniel opens a phase. Everything after Phase 3 is a plan, not a commitment.
 
 ## Phase gates
 
@@ -55,7 +57,19 @@ Full plan, definition of done and step order: [PHASE_1_IMPLEMENTATION_PLAN.md](P
 
 **Out of scope (Daniel's explicit Phase 2 non-goals):** a real Workday integration or certification; SAP/Oracle connectors, even empty ones; Kafka/Redpanda/any broker; outbox/dispatcher; payroll; provisioning/equipment; incident management; SLO dashboards/Prometheus/Grafana/tracing; microservices; mobile app; anything real.
 
-Full plan, definition of done and step order: [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md). Backend review, UI, browser tests and cross-links are complete; see [Codex’s review](PHASE_2_CODEX_REVIEW.md). Q1–Q3 recommendations are ACCEPT; Daniel’s final acceptance is pending. Phase 3 is not opened.
+Full plan, definition of done and step order: [PHASE_2_IMPLEMENTATION_PLAN.md](PHASE_2_IMPLEMENTATION_PLAN.md). Backend review, UI, browser tests and cross-links are complete; see [Codex's review](PHASE_2_CODEX_REVIEW.md). **Accepted by Daniel (2026-09-22)**, via the Phase 3 opening message.
+
+## Phase 3: Durable events and asynchronous integration (OPEN — backend vertical slice implemented and tested; Event Explorer/operation UI and E2E pending)
+
+**Goal.** Prove a committed workforce change can become a durable, asynchronously delivered integration event, processed by idempotent downstream consumers that survive retries, duplicate delivery and restarts, with permanent failures visible and safely replayable.
+
+**In scope:** a new technical `messaging` module (transactional outbox, publisher, Kafka producer); one published event (`EmploymentStarted`); two `integrations`-owned consumers (Identity Provisioning, Equipment Provisioning) with idempotent operation tracking, scheduled retry, dead-letter and audited replay; an Event Explorer and operation-detail UI (next step).
+
+Backend delivered and tested against real PostgreSQL and a real embedded Kafka broker (14 new tests: `OutboxPublishingIT`, `IntegrationOperationsIT`, `EventPipelineIT`); evidence in [PHASE_3_IMPLEMENTATION_PLAN.md](PHASE_3_IMPLEMENTATION_PLAN.md) section 1. Frontend (Event Explorer, operation-detail/replay UI) and the three E2E flows remain the next step.
+
+**Out of scope (Daniel's explicit Phase 3 non-goals):** microservices, a service mesh, Kubernetes; a real payroll, identity or equipment provider; a real Workday production connector; legal calculations, CCSS, aguinaldo logic; incident management; a full SLO/error-budget platform; a production-grade schema registry; distributed tracing infrastructure beyond structured logs and correlation/causation ids.
+
+Full plan, definition of done and step order: [PHASE_3_IMPLEMENTATION_PLAN.md](PHASE_3_IMPLEMENTATION_PLAN.md).
 
 ## Provisioning milestone (formerly "Phase 1: Hire-to-provision vertical slice (standalone-first)"; numbering to be assigned by Daniel)
 

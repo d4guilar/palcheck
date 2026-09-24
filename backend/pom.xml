@@ -79,10 +79,24 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- Messaging: Phase 3 transactional outbox publisher and consumers (ADR-0026); version managed by the Boot parent.
+         The starter, not the raw spring-kafka client: Boot 4 moved Kafka's autoconfiguration (KafkaTemplate,
+         listener container factory, etc.) into its own module, spring-boot-kafka, which only the starter pulls in. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-kafka</artifactId>
+    </dependency>
+
     <!-- Test -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <!-- Real, embedded, in-process Kafka broker for tests (ADR-0026); same reasoning as the main dependency above. -->
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-kafka-test</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

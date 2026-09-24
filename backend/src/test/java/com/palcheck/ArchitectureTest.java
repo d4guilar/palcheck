@@ -27,14 +27,21 @@ class ArchitectureTest {
     @ArchTest
     static final ArchRule sharedKernelDependsOnNothingInThisProject = noClasses().that()
             .resideInAPackage("com.palcheck.shared..")
-            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.platform..", "com.palcheck.access..",
-                    "com.palcheck.audit..", "com.palcheck.workforce..", "com.palcheck.integrations..");
+            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.platform..", "com.palcheck.messaging..",
+                    "com.palcheck.access..", "com.palcheck.audit..", "com.palcheck.workforce..", "com.palcheck.integrations..");
 
     @ArchTest
     static final ArchRule platformIsTechnicalAndDependsOnNoModule = noClasses().that()
             .resideInAPackage("com.palcheck.platform..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.messaging..", "com.palcheck.access..",
+                    "com.palcheck.audit..", "com.palcheck.workforce..", "com.palcheck.integrations..");
+
+    @ArchTest
+    static final ArchRule messagingIsTechnicalAndDependsOnNoDomainModule = noClasses().that()
+            .resideInAPackage("com.palcheck.messaging..")
             .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.access..", "com.palcheck.audit..",
-                    "com.palcheck.workforce..", "com.palcheck.integrations..");
+                    "com.palcheck.workforce..", "com.palcheck.integrations..")
+            .because("messaging is technical publication infrastructure, never owned by a domain module (ADR-0018, ADR-0026)");
 
     @ArchTest
     static final ArchRule auditNeverDependsOnAccessOrWorkforce = noClasses().that()
@@ -52,6 +59,13 @@ class ArchitectureTest {
             .resideInAPackage("com.palcheck.workforce..")
             .should().dependOnClassesThat().resideInAPackage("com.palcheck.integrations..")
             .because("integrations writes through workforce.api; workforce must never call back into it (ADR-0024)");
+
+    @ArchTest
+    static final ArchRule noKafkaClientOutsideMessagingOrIntegrationsInfrastructure = noClasses().that()
+            .resideOutsideOfPackages("com.palcheck.messaging.infrastructure..", "com.palcheck.integrations.infrastructure..")
+            .should().dependOnClassesThat().resideInAnyPackage("org.apache.kafka..", "org.springframework.kafka..")
+            .because("workforce publishes through OutboxWriter, never a Kafka client directly (ADR-0026); "
+                    + "integrations consumes through its own client in its infrastructure package, never owning publication");
 
     // --- only the api package is visible across modules -----------------------------------------------------
 
@@ -81,13 +95,28 @@ class ArchitectureTest {
             .because("integrations has no api package yet (ADR-0024): nothing outside it may depend on it at all");
 
     @ArchTest
+    static final ArchRule otherModulesOnlyUseMessagingThroughItsApi = noClasses().that()
+            .resideOutsideOfPackage("com.palcheck.messaging..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.messaging.domain..",
+                    "com.palcheck.messaging.application..", "com.palcheck.messaging.infrastructure..")
+            .because("workforce and integrations may depend only on messaging.api (ADR-0026)");
+
+    @ArchTest
     static final ArchRule integrationsDependsOnlyOnItsAllowedNeighbours = classes().that()
             .resideInAPackage("com.palcheck.integrations..").should().onlyDependOnClassesThat()
             .resideInAnyPackage("com.palcheck.integrations..", "com.palcheck.workforce.api..",
-                    "com.palcheck.access.api..", "com.palcheck.audit.api..", "com.palcheck.platform..",
-                    "com.palcheck.shared..", "java..", "jakarta..", "org.springframework..", "org.slf4j..",
+                    "com.palcheck.access.api..", "com.palcheck.audit.api..", "com.palcheck.messaging.api..",
+                    "com.palcheck.platform..", "com.palcheck.shared..", "java..", "jakarta..", "org.springframework..",
+                    "org.apache.kafka..", "org.slf4j..", "tools.jackson..", "com.fasterxml.jackson.annotation..")
+            .because("integrations may write workforce data only through workforce.api and consume events only through messaging.api (ADR-0024, ADR-0026)");
+
+    @ArchTest
+    static final ArchRule messagingDependsOnlyOnItsAllowedNeighbours = classes().that()
+            .resideInAPackage("com.palcheck.messaging..").should().onlyDependOnClassesThat()
+            .resideInAnyPackage("com.palcheck.messaging..", "com.palcheck.platform..", "com.palcheck.shared..",
+                    "java..", "jakarta..", "org.springframework..", "org.apache.kafka..", "org.slf4j..",
                     "tools.jackson..", "com.fasterxml.jackson.annotation..")
-            .because("integrations may write workforce data only through workforce.api (ADR-0024)");
+            .because("messaging is technical infrastructure depending only on shared and platform (ADR-0018, ADR-0026)");
 
     @ArchTest
     static final ArchRule providerVocabularyNeverLeavesTheAdapterPackage = noClasses().that()
@@ -135,6 +164,12 @@ class ArchitectureTest {
                     "com.palcheck.integrations.web..", "org.springframework.jdbc..");
 
     @ArchTest
+    static final ArchRule messagingApplicationDoesNotKnowInfrastructure = noClasses().that()
+            .resideInAPackage("com.palcheck.messaging.application..")
+            .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.messaging.infrastructure..",
+                    "org.springframework.jdbc..", "org.apache.kafka..", "org.springframework.kafka..");
+
+    @ArchTest
     static final ArchRule integrationsControllersNeverTouchRepositoriesOrSql = noClasses().that()
             .resideInAPackage("com.palcheck.integrations.web..")
             .should().dependOnClassesThat().resideInAnyPackage("com.palcheck.integrations.infrastructure..",
@@ -151,6 +186,9 @@ class ArchitectureTest {
     private static final ArchCondition<JavaMethod> TAKE_A_TENANT = new ArchCondition<>("name the tenant") {
         @Override
         public void check(JavaMethod method, ConditionEvents events) {
+            if (isScheduledCrossTenantClaim(method)) {
+                return;
+            }
             boolean names = method.getRawParameterTypes().stream().anyMatch(t -> t.getName().equals("com.palcheck.shared.TenantId")
                     || isTenantOwned(t));
             if (!names) {
@@ -164,6 +202,16 @@ class ArchitectureTest {
                     && type.getSimpleName().matches("Person|Employment|Assignment|LegalEntity|OrgUnit"))
                     || (type.getPackageName().equals("com.palcheck.integrations.domain")
                     && type.getSimpleName().matches("SyncRun|SyncItem|ExternalSystem|FieldLineage"));
+        }
+
+        /**
+         * A scheduled poller's own claim query must scan every tenant's due work in one statement (ADR-0027,
+         * mirrors {@code JdbcOutboxRepository.claimEligible}, which sits outside this rule entirely because
+         * {@code messaging.infrastructure} isn't a tenant-scoped domain module). Each row it returns still carries
+         * its own {@code TenantId}, which every subsequent call on that row does name.
+         */
+        private boolean isScheduledCrossTenantClaim(JavaMethod method) {
+            return method.getName().equals("claimDueRetries");
         }
     };
 

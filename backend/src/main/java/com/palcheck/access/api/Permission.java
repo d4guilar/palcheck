@@ -16,5 +16,9 @@ public enum Permission {
     VIEW_SYSTEMS,
     VIEW_SYNCS,
     RUN_SYNC,
-    VIEW_LINEAGE
+    VIEW_LINEAGE,
+    /** Phase 3: the Event Explorer, integration operation status, and authorized replay (docs/PHASE_3_IMPLEMENTATION_PLAN.md section 8). */
+    VIEW_EVENTS,
+    VIEW_INTEGRATION_OPERATIONS,
+    REPLAY_INTEGRATION_OPERATION
 }

@@ -778,3 +778,127 @@ Known simulation and crash-recovery limits remain documented in PHASE_2_CODEX_RE
 
 ### Suggested next step
 Review the milestone commit and complete the Phase 2 acceptance/demo walkthrough.
+
+## 2026-09-22 21:24 — CLAUDE
+
+### Task
+
+Phase 3 opening: read the current implementation (Phase 2 now committed as `9fa3eee "Complete Phase 2 HRIS translation foundation"`, with two Codex worklog entries after mine finishing the frontend, review and commit), reconcile against Daniel's Phase 3 message, and produce docs/PHASE_3_IMPLEMENTATION_PLAN.md plus its ADRs before writing code.
+
+### Work completed
+
+- Confirmed the working tree is clean (`git status` empty) and reviewed the two Codex worklog entries (18:20, 18:29) covering the completed Phase 2 frontend (Systems list, Workday Simulation detail, run history/detail, source disclosure), a backend review (bug fixes: idempotent synthetic reference data, provider interpretation moved fully into the mapper, Person preserved on re-sync, manager-link accounting corrected, per-worker failures caught instead of aborting the run, a V8 migration adding tenant-qualified constraints, a summary/pagination endpoint, RUN_SYNC required at the port), and the milestone commit. Final counts recorded there: 192 backend tests, 114 frontend tests, 20 browser tests, all passing.
+- Read AGENTS.md, ARCHITECTURE.md (current messaging/module notices), MODULES.md 2a, DOMAIN_MODEL.md, INTEGRATION_ARCHITECTURE.md (sections 1–9, especially 5–7: outbox, dispatcher, delivery-attempt state machine, retry/replay/reprocess), DATA_OWNERSHIP_AND_LINEAGE.md, ENTERPRISE_SYSTEMS.md, SECURITY.md, ROADMAP.md, PHASE_2_IMPLEMENTATION_PLAN.md, ADR-0006/0007/0008/0018/0019/0022/0024/0025, and the current backend structure (migrations through V8, module list, `access.api.Permission`).
+- Wrote [docs/PHASE_3_IMPLEMENTATION_PLAN.md](../PHASE_3_IMPLEMENTATION_PLAN.md) (20-item definition of done, scope, reconciliation against the Phase 0 outbound design, architecture, persistence, API, authorization, test strategy, step table, risks/open questions Q1–Q3), [ADR-0026](adr/0026-broker-and-transactional-outbox.md) (broker choice and transactional outbox), [ADR-0027](adr/0027-business-operation-identity-and-idempotent-consumers.md) (operation identity, idempotent consumers, retry, dead-letter, replay), [ADR-0028](adr/0028-domain-vs-integration-events.md) (domain vs. integration events and the publication boundary).
+- Treated Daniel's Phase 3 opening message ("Phase 1 and Phase 2 are complete and accepted") as his acceptance of both, exactly as his Phase 2 opening message was treated as accepting Phase 1: updated ADR-0024 and ADR-0025 to **Accepted** in the ADR index (Codex's independent review had already recommended ACCEPT for their Q1–Q3).
+- Updated AGENTS.md section 2 (phase gate now Phase 3; Phase 1/2 non-goals consolidated; Phase 3's narrow exception to the broker/outbox ban stated explicitly) and ROADMAP.md (Phase 2 marked accepted, new Phase 3 section, reconciliation notice).
+
+### Decisions made
+
+Recorded in the ADRs and the plan in full; summarized here:
+
+- **Broker: Apache Kafka, not Redpanda**, decided for this specific environment (no container runtime, no WSL2) rather than defaulting to the prompt's suggestion — Kafka's KRaft mode runs as a bare JVM process with native Windows scripts, mirroring the Keycloak precedent; Redpanda's Windows story requires Docker or WSL2, neither available here.
+- **New module `messaging`** (technical, depends only on `shared`/`platform`), owning the transactional outbox and the Kafka producer. `workforce` gains its first dependency on `messaging.api` (one write port, `OutboxWriter.append`, `Propagation.MANDATORY`, the same shape as `audit.api.AuditRecorder`). `integrations` gains its own Kafka consumer client for consumption only — never publication infrastructure, per ADR-0018 decision 3.
+- **One event published**: `EmploymentStarted` (domain event) -> `EmploymentStartedIntegrationEvent` v1 (the integration contract), payload is identifiers only (personId, employmentId, assignmentId, legalEntityId, orgUnitId) — no snapshot, per Daniel's explicit instruction.
+- **Business operation identity from the aggregate, never the event**: `IDENTITY_PROVISION:{employmentId}`, `EQUIPMENT_PROVISION:{assignmentId}`, one row per operation (`integrations.integration_operation`), matching ADR-0019 decision 3 made concrete for the first time.
+- **Retry at the operation level, not by Kafka redelivery**: a scheduled job per consumer re-attempts `FAILED_TRANSIENT` rows on a shared, configurable backoff (`5s, 30s, 2m, 10m`). Exhaustion -> `DEAD_LETTERED`; a genuinely permanent failure -> `FAILED_PERMANENT` directly, never auto-retried.
+- **Dead-letter is a database status column, not a physical Kafka DLQ topic** — simpler to query and build a UI over at Phase 3's scale (two consumers, one event type).
+- **Replay re-attempts from the stored operation payload**, not by going back to the outbox/broker; refused on an already-`SUCCEEDED` operation; audited through the existing `audit.api.AuditRecorder`.
+- **Tests use a real embedded Kafka broker** (`spring-kafka-test`), the same "real dependency, no external process" precedent `zonky embedded-postgres` set for PostgreSQL.
+- Scope for this session: plan + 3 ADRs + a tested backend vertical slice (steps 3–12 of the plan). Event Explorer/operation UI, and E2E, are the explicitly stated next step, matching how Phase 1 and Phase 2 both split backend from frontend.
+
+### Tests
+
+None yet for Phase 3 — this entry covers planning only. Implementation and its tests follow in the next worklog entry, in the same session.
+
+### UI changes
+
+None in this entry.
+
+### Assumptions
+
+- Daniel's Phase 3 message is treated as authorization for the bounded design decisions in ADR-0026/0027/0028, the same provisional-then-confirm pattern Phase 1 (Q1–Q3) and Phase 2 (Q1–Q3) both used.
+- Kafka runs locally as a bare JVM process (KRaft mode) for manual/dev verification, and as `spring-kafka-test`'s embedded broker for automated tests; Docker Compose gains a Kafka service but is not executable on this machine, matching the existing unverified-Compose status.
+
+### Open questions
+
+Q1–Q3 in the plan section 14 (database-backed dead-letter vs. a physical DLQ topic; Kafka over Redpanda for this environment; one shared retry policy for both consumers). Phase 1/2's own remaining open items are unchanged and untouched.
+
+### Risks
+
+Carried over from the plan section 14: the broker is the first local process this project cannot fully verify end-to-end without either the native distribution or Docker; database-backed dead-lettering trades Kafka-native DLQ tooling for simplicity; one shared retry policy may not fit a future, differently-shaped consumer.
+
+### Suggested next step
+
+Implement plan steps 3–12 (event contract, outbox, publisher, Kafka, the published event, both consumers, idempotency, retry/dead-letter, replay) with backend integration tests on real PostgreSQL and a real embedded Kafka broker, then stop and report — matching this same session's continuation, not a separate one.
+
+## 2026-09-23 18:29 — CLAUDE
+
+### Task
+
+Implement Phase 3 plan steps 3–12 (docs/PHASE_3_IMPLEMENTATION_PLAN.md): event boundaries, transactional outbox, publisher, a real Kafka broker, the `EmploymentStarted` integration event wired into `RegisterWorkerService`, both downstream consumers (Identity Provisioning, Equipment Provisioning) with idempotency/retry/dead-letter/replay, the Event Explorer's backend API, and backend tests — continuing directly from the previous entry in the same phase.
+
+### Work completed
+
+- `com.palcheck.integrations.application.OperationConsumer` — the abstract idempotent-processing skeleton every consumer shares: `handle(event)` (acts only on a `PENDING` row — a duplicate delivery while a retry or dead-letter is already scheduled is a pure no-op, not a fresh attempt), `retryDue(limit)`, `replay(tenantId, operationKey)` (refuses an already-`SUCCEEDED` operation), and the shared outcome-to-status transition logic (`SUCCEEDED`/`FAILED_PERMANENT`/`FAILED_TRANSIENT`-with-backoff/`DEAD_LETTERED`-on-exhaustion).
+- `com.palcheck.integrations.infrastructure.IdentityProvisioningConsumer` and `EquipmentProvisioningConsumer` — concrete `@KafkaListener`-based consumers extending it, each its own Kafka consumer group, deserializing `IntegrationEvent` JSON and delegating to `handle`.
+- `com.palcheck.integrations.infrastructure.IntegrationRetryJob` — the scheduled retry tick, deliberately a separate `@ConditionalOnProperty`-gated class from the two consumers (mirrors `OutboxPublisherJob`), so it can be disabled in tests without disabling the `@KafkaListener` beans themselves.
+- Extracted `com.palcheck.messaging.application.OutboxPublishingService` (public, independently testable) out of `OutboxPublisherJob`'s nested `Publisher` class, leaving `OutboxPublisherJob` as a thin scheduled tick over it — a design correction made mid-session once the asymmetry with `IdempotencyPurgeJob`/`IdempotencyService` (a thin job over a real, testable service) became obvious while writing tests against the old shape.
+- Three new `access.api.Permission` values (`VIEW_EVENTS`, `VIEW_INTEGRATION_OPERATIONS`, `REPLAY_INTEGRATION_OPERATION`), bundled into `HR_ADMIN` only via its existing `EnumSet.allOf(Permission.class)`.
+- `com.palcheck.messaging.api.OutboxEventView`/`OutboxEventReader` — a new read port (mirrors `audit.api.AuditHistory`'s "does not authorize itself" shape, since `messaging` still depends on no domain module) so `integrations.application` can read outbox events for the Event Explorer without `messaging` ever knowing `access` exists.
+- `com.palcheck.integrations.application.IntegrationOperationsService` and `EventsService`, and `com.palcheck.integrations.web.IntegrationOperationsController` — the four endpoints from the plan's API surface: `GET /api/integration-operations` (paged, filterable by consumer/status), `GET /api/integration-operations/{consumer}/{operationKey}`, `POST .../replay`, `GET /api/events/{eventId}`.
+- `com.palcheck.shared.AlreadySucceededException` (new, `ErrorCode.CONFLICT`, so it becomes an HTTP 409 through the existing generic `ApplicationException` handler with no dedicated handler method needed) — thrown by `OperationConsumer.replay` when the target operation already succeeded.
+- `IntegrationOperationRepository`/`JdbcIntegrationOperationRepository` gained `list(tenantId, consumer, status, page, size)` for the operations list endpoint; `JdbcOutboxRepository` gained `find` (implementing `OutboxEventReader`) for the event-detail endpoint.
+- `ArchitectureTest`: added a small, explicit, documented exemption in `TAKE_A_TENANT` for `claimDueRetries` (a scheduled poller's claim query legitimately scans every tenant's due work in one statement, exactly like `JdbcOutboxRepository.claimEligible`, which sits outside this rule entirely because `messaging.infrastructure` isn't a tenant-scoped domain module) — all 28 rules pass.
+- `application.yml`/`application-test.yml`: added `spring.kafka.*` configuration (bootstrap-servers, String (de)serializers, `auto-offset-reset: earliest`), `palcheck.messaging.topic`/`retry-delays` defaults, and disabled `spring.kafka.listener.auto-startup`, `palcheck.messaging.publisher-enabled`, `palcheck.integrations.retry-enabled` in the test profile so ordinary tests never dial a broker that isn't running (mirrors the existing `palcheck.idempotency.purge-enabled` precedent).
+- Three new backend test classes (14 tests total, all real PostgreSQL, one real embedded Kafka broker):
+  - `com.palcheck.messaging.OutboxPublishingIT` (4): atomic outbox commit with the business write; a forced outbox-insert-failure trigger rolls back the whole hire command; a fake `BrokerPublisher` (`@TestConfiguration`/`@Primary`) proves publish-success and retry-then-`FAILED`-after-exhaustion, without needing Kafka for those two scenarios.
+  - `com.palcheck.integrations.IntegrationOperationsIT` (9): duplicate delivery of the same event is a no-op; the same operation key from two different event ids executes once; a forced transient failure retries to success; a forced permanent failure dead-letters without auto-retry; an authorized replay after a fix succeeds and is audited; replaying an already-succeeded operation is rejected (409); tenant isolation on the new endpoints; the three-permission matrix; correlation/causation propagate from the originating HTTP request through the outbox row to the `/api/events/{id}` response.
+  - `com.palcheck.integrations.EventPipelineIT` (1): the one true real-broker proof — `@EmbeddedKafka`, hiring someone end to end through the real outbox → publisher → broker → both independent `@KafkaListener` consumers, both reaching `SUCCEEDED`.
+- Updated `docs/PHASE_3_IMPLEMENTATION_PLAN.md` (DoD table and step table filled with real test-name evidence; corrected the Kafka dependency artifact names throughout), `docs/adr/0026-broker-and-transactional-outbox.md` (decision 7 corrected from plain `FOR UPDATE SKIP LOCKED` to the actual claim-and-lease mechanism; the dependency artifact name in Consequences), `docker-compose.yml` (added a single-node KRaft Kafka service), `docs/LOCAL_DEVELOPMENT.md` (Kafka row in the ports table, native-process instructions mirroring Keycloak's, both explicitly marked unverified on this machine), `docs/ROADMAP.md` (Phase 3 heading now states the backend slice is implemented and tested).
+
+### Decisions made
+
+- **`OutboxPublishingService` extracted as its own public, testable class**, not left as a package-private nested class inside the scheduled job — the same shape `IdempotencyPurgeJob`/`IdempotencyService` already established; the earlier shape (all logic inside a package-private nested `Publisher`) would have forced tests into an awkward same-package placement or reflection, for no benefit.
+- **`IntegrationRetryJob` is a separate class from the two `@KafkaListener` consumers**, not a `@Scheduled` method on each — the retry tick needs to be disabled in tests independently of the listener containers, and a shared, single-property-gated job avoids duplicating that gating twice.
+- **Replay is audited unconditionally on any accepted attempt**, regardless of whether the new attempt itself succeeds or fails again — matches Daniel's brief's own phrasing ("Integration operation replay requested" describes the request, not its outcome), and keeps the audit trail useful even when a replay doesn't immediately fix things.
+- **`AlreadySucceededException` reuses `ErrorCode.CONFLICT`** rather than a new error code — it genuinely is a conflict (replaying a finished operation conflicts with its current state), distinct in class (not in code) from optimistic-concurrency `ConflictException`, so no dedicated exception handler method was needed.
+- **Consumer idempotency check is keyed on `PENDING` status specifically**, not "not `SUCCEEDED`": a fresh event delivery finding a row already `FAILED_TRANSIENT`/`FAILED_PERMANENT`/`DEAD_LETTERED` is acknowledged and left alone (recovery is the scheduled retry's or a human replay's job), never re-attempted inline by the listener itself — otherwise a redelivered event would defeat the backoff schedule.
+
+### Tests
+
+211 backend tests, all passing (`./mvnw verify`; real PostgreSQL for every integration test; one real, in-process, embedded Kafka broker for `EventPipelineIT`): 77 unit (`mvn test`) + 134 integration across 19 `*IT` classes (`mvn verify`), including the 14 new ones listed above. `ArchitectureTest`: 28/28 rules pass. Two pre-existing tests needed a one-line update for the new permission count (`AuthenticationIT.mappedAdministratorSeesTenantAndPermissions`, `AuthorizationMatrixIT.rolesAreOnlyBundlesOfPermissions`: 11 → 14), the same maintenance every earlier phase's own new permissions required.
+
+### UI changes
+
+None. Backend only this session; the Event Explorer and operation-detail/replay UI are plan steps 13–14, explicitly deferred (section 16).
+
+### Failures discovered
+
+1. **Missing `spring-boot-starter-kafka` dependency.** `pom.xml` declared the raw `org.springframework.kafka:spring-kafka`/`spring-kafka-test` client libraries (written in the previous session). These compile cleanly — the bug is invisible to `mvn compile`, `mvn test-compile`, and `ArchitectureTest` alike — but Spring Boot 4 moved Kafka's autoconfiguration (`KafkaTemplate`, the listener container factory, etc.) into its own module, `spring-boot-kafka`, which only the starter artifact pulls in. Every `@SpringBootTest`-based integration test in the **entire suite**, not just the new Phase 3 ones, failed at context startup the moment any of them actually ran (`KafkaBrokerPublisher`'s constructor needs a `KafkaTemplate<String, String>` bean that autoconfiguration never created) — first caught by `PeopleCreateAndReadIT`, an unrelated, pre-existing Phase 1 test, when a routine full-suite run was attempted.
+2. **A Java text-block trailing-whitespace bug in three `RETURNING` clauses.** `JdbcOutboxRepository.claimEligible` and `JdbcIntegrationOperationRepository.findOrCreate`/`claimDueRetries` (written in the previous session) each ended a text block with `RETURNING """ + COLUMNS`. Java text blocks strip incidental *trailing* whitespace per line, so the space before the closing `"""` was silently removed, producing `RETURNINGid, tenant_id, ...` — a PostgreSQL syntax error. Invisible to `javac` (valid Java) and to `ArchUnit` (no SQL awareness); caught only once each query actually ran against real PostgreSQL, by `OutboxPublishingIT.publishingASucceedingRowMarksItPublished` and `.aBrokerThatKeepsFailingIsNotRetriedForeverAfterItsAttemptsAreExhausted`.
+3. **Two pre-existing tests hardcoded the total `Permission` enum size** (11, the Phase 2 count) and failed once Phase 3's three new permissions brought it to 14 — expected test maintenance, not a design defect, the same kind of update Phase 2's own new permissions required of Phase 1's tests.
+4. **Self-inflicted process error, not a product bug:** running a foreground `mvn test-compile` against `target/` while an earlier `mvn verify` was still running in the background against the same directory corrupted that run ("There was an error in the forked process"). Recorded here only as a note to future sessions: never run a second Maven invocation against the same `target/` directory while one is already in flight; wait for the background task's own completion notification first.
+
+### Bugs fixed
+
+1. `pom.xml`: replaced `org.springframework.kafka:spring-kafka`/`spring-kafka-test` with `org.springframework.boot:spring-boot-starter-kafka`/`spring-boot-starter-kafka-test`. Corrected the artifact names in `docs/PHASE_3_IMPLEMENTATION_PLAN.md` sections 5 and 12, and in `docs/adr/0026-broker-and-transactional-outbox.md`'s Consequences.
+2. All three `RETURNING """ + COLUMNS` (and `+ qualified()`) occurrences fixed by putting `RETURNING` alone on its own line, so the line terminator that follows it (never stripped, since it isn't trailing whitespace) supplies the separator before the concatenated column list.
+3. `AuthenticationIT.mappedAdministratorSeesTenantAndPermissions` and `AuthorizationMatrixIT.rolesAreOnlyBundlesOfPermissions`: updated the hardcoded permission count from 11 to 14, with a comment explaining the three new Phase 3 permissions.
+4. (Process) Re-ran the affected Maven commands cleanly, one at a time, after the concurrent-build corruption; no source change was needed.
+
+### Assumptions
+
+Unchanged from the previous entry: Daniel's Phase 3 opening message authorizes the bounded design decisions in ADR-0026/0027/0028; Kafka runs locally as a bare JVM process (KRaft mode) for manual/dev use and as `spring-kafka-test`'s embedded broker for automated tests. Refined this entry: only the **embedded test broker** path has actually run and passed (`EventPipelineIT`); a manually-started native Kafka process and the Docker Compose `kafka` service are both still unverified on this machine, exactly like Compose's Postgres/Keycloak services already were.
+
+### Open questions
+
+Q1–Q3 from the plan (section 14) remain open for Daniel's explicit confirmation, now backed by a tested implementation rather than only a documented decision: the database-backed dead-letter state over a physical Kafka DLQ topic; Kafka over Redpanda for this environment; one shared retry policy for both consumers.
+
+### Risks
+
+Carried over from the plan section 14, R1 sharpened: the broker is still the one dependency this project cannot fully verify end-to-end on this machine without either the native distribution or Docker — that now applies to *both* the Compose service and a manually-run native process, since only the embedded test broker has actually executed here.
+
+### Suggested next step
+
+Plan steps 13–15: the Event Explorer UI, the operation-detail/replay UI, and the three E2E flows from Daniel's brief (success; transient failure and retry; permanent failure and authorized replay), following the same backend-then-frontend order Phase 1 and Phase 2 both used — then step 16's final documentation pass and a request for Daniel's review of Phase 3, mirroring how Phase 1 and Phase 2 were each opened for review before acceptance.

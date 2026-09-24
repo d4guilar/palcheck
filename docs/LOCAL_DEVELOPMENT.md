@@ -10,8 +10,9 @@ How to run PalCheck's Phase 1 and Phase 2 application on your machine, sign in a
 | Backend (Spring Boot, `dev` profile) | 8080 | `./mvnw spring-boot:run` in `backend/` |
 | Keycloak (development identity provider) | 8180 | Docker Compose, or a local Keycloak (see below) |
 | PostgreSQL 17 | 5432 | Docker Compose, or a local server |
+| Kafka (Phase 3, ADR-0026: KRaft mode, single broker) | 9092 | Docker Compose, or a local Kafka (see below) |
 
-Nothing else is needed: no broker, no dashboards, no simulator.
+No dashboards or simulator run as separate processes; Identity/Equipment provisioning stay in-process simulations inside the backend.
 
 **Why the browser uses port 5173, not 8080.** The browser must see one origin so the backend's session cookie stays first-party and no token is ever held by JavaScript. The Vite dev server proxies `/api`, `/oauth2`, `/login` and `/logout` to the backend ([web/vite.config.ts](../web/vite.config.ts)). Open `http://localhost:5173`.
 
@@ -19,19 +20,19 @@ Nothing else is needed: no broker, no dashboards, no simulator.
 
 - JDK 17 or newer (`JAVA_HOME` set). Maven is provided by the wrapper (`mvnw`, `mvnw.cmd`).
 - Node.js 24 (the tested development/CI version) and npm.
-- Either **Docker** (with Compose v2) for PostgreSQL and Keycloak, or the do-it-yourself alternative below.
+- Either **Docker** (with Compose v2) for PostgreSQL, Keycloak and Kafka, or the do-it-yourself alternative below.
 
-The backend's tests do **not** need Docker: they start real PostgreSQL binaries in-process ([ADR-0022](adr/0022-phase1-technical-baseline.md) decision 10).
+The backend's tests do **not** need Docker: they start real PostgreSQL binaries in-process ([ADR-0022](adr/0022-phase1-technical-baseline.md) decision 10) and a real, in-process Kafka broker via `spring-kafka-test`'s `EmbeddedKafkaBroker` (ADR-0026). Only running the `dev` profile against a real, persistent broker needs one of the two options below.
 
 ## Quick start with Docker Compose
 
-> **Verification status.** `docker-compose.yml` and the Keycloak realm import were written on a machine without a container runtime. The realm file was verified by importing it into a locally unpacked Keycloak 26.7.4, and the full sign-in and browser test flow was run against that. **The Compose file itself has not been executed yet.** If it does not work, please tell us; the "Without Docker" section below is the path that was actually run.
+> **Verification status.** `docker-compose.yml` and the Keycloak realm import were written on a machine without a container runtime. The realm file was verified by importing it into a locally unpacked Keycloak 26.7.4, and the full sign-in and browser test flow was run against that. **The Compose file itself has not been executed yet**, including its Phase 3 Kafka service (a real, but embedded, in-process broker was verified through the backend's own test suite — see [ADR-0026](adr/0026-broker-and-transactional-outbox.md) — but not this Compose service, and not a manually-run native Kafka process either). If it does not work, please tell us; the "Without Docker" section below is the path that was actually run.
 
 ```bash
 # 1. Create the untracked environment file from the committed placeholder template.
 cp .env.example .env
 
-# 2. Start PostgreSQL and Keycloak. Keycloak imports the "palcheck" realm on first start (about a minute).
+# 2. Start PostgreSQL, Keycloak and Kafka. Keycloak imports the "palcheck" realm on first start (about a minute).
 docker compose up -d
 
 # 3. Start the backend (dev profile: reads ../.env, seeds synthetic demo data, readable logs).
@@ -77,11 +78,21 @@ This is how the stack was actually run and verified during development.
    ```
 
    `KC_HOSTNAME` must be the address the **browser and the backend both** use, so the token issuer is identical for both.
-3. Start the backend and web app exactly as in the Docker steps.
+3. **Kafka 4.x** (JDK 17+, Phase 3): unpack the distribution and run it in **KRaft mode** (no separate ZooKeeper), the same native-process shape as Keycloak above. **Not executed on this machine** — written and reasoned about (ADR-0026), but never manually started and verified end to end outside the backend's own embedded-broker tests; treat these commands as unverified until someone runs them.
+
+   ```bat
+   REM Windows (bin\windows\*.bat); the shell scripts under bin/ are the equivalent on Linux/macOS.
+   bin\windows\kafka-storage.bat random-uuid > cluster-id.txt
+   bin\windows\kafka-storage.bat format -t <contents of cluster-id.txt> -c config\kraft\server.properties
+   bin\windows\kafka-server-start.bat config\kraft\server.properties
+   ```
+
+   The default `config\kraft\server.properties` listens on `localhost:9092`, matching `PALCHECK_KAFKA_BOOTSTRAP_SERVERS`'s default in `application.yml`; no PalCheck-specific configuration is needed beyond that.
+4. Start the backend and web app exactly as in the Docker steps.
 
 ## Resetting
 
-- **Docker:** `docker compose down -v` deletes the database volume and Keycloak's dev data; start again from step 2.
+- **Docker:** `docker compose down -v` deletes the database volume, Keycloak's dev data and Kafka's dev data; start again from step 2.
 - **Only the application data:** drop and recreate the database. The dev seeder creates a demo tenant only if it does not exist yet, so it never overwrites data you created.
 
 ## Tests
