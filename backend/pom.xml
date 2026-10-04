@@ -20,7 +20,7 @@
   <properties>
     <java.version>17</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <archunit.version>1.5.0</archunit.version>
+    <archunit.version>1.5.1</archunit.version>
     <embedded-postgres.version>2.2.2</embedded-postgres.version>
     <!-- Real PostgreSQL 17 binaries for tests; matches the Compose image and the local development server major version -->
     <embedded-postgres-binaries.version>17.11.0</embedded-postgres-binaries.version>
