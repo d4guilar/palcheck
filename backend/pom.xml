@@ -24,7 +24,7 @@
     <embedded-postgres.version>2.2.2</embedded-postgres.version>
     <!-- Real PostgreSQL 17 binaries for tests; matches the Compose image and the local development server major version -->
     <embedded-postgres-binaries.version>17.11.0</embedded-postgres-binaries.version>
-    <mock-oauth2-server.version>6.0.2</mock-oauth2-server.version>
+    <mock-oauth2-server.version>6.1.2</mock-oauth2-server.version>
   </properties>
 
   <dependencyManagement>
